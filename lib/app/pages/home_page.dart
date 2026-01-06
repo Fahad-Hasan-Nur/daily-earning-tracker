@@ -1,3 +1,5 @@
+import 'package:daily_income_tracker/app/pages/date_report_page.dart';
+import 'package:daily_income_tracker/app/pages/monthly_report_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
@@ -55,6 +57,14 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: MyColors.appColor,
         title: Text('Dashboard', style: TextStyle(color: Colors.white)),
         actions: [
+          IconButton(
+            onPressed: () => Get.to(MonthlyReportPage()),
+            icon: Icon(Icons.calendar_month, color: Colors.white),
+          ),
+          IconButton(
+            onPressed: () => Get.to(DateReportPage()),
+            icon: Icon(Icons.analytics, color: Colors.white),
+          ),
           IconButton(
             onPressed: () => auth.logout(),
             icon: Icon(Icons.logout, color: Colors.white),

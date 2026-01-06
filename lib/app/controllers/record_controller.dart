@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class RecordController extends GetxController {
-  final _db = FirebaseFirestore.instance;
+  final db = FirebaseFirestore.instance;
   RxList records = [].obs;
   var balance = 0.0.obs;
   var totalIncome = 0.0.obs;
@@ -38,7 +38,7 @@ class RecordController extends GetxController {
       59,
     ); // last day of month, 23:59:59
 
-    _db
+    db
         .collection('records')
         .where('userId', isEqualTo: uid)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
@@ -67,7 +67,7 @@ class RecordController extends GetxController {
       59,
     ); // 23:59:59
 
-    _db
+    db
         .collection('records')
         .where('userId', isEqualTo: uid)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
@@ -84,7 +84,7 @@ class RecordController extends GetxController {
   Future addRecord(double amount, String type, DateTime date) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     try {
-      await _db.collection('records').add({
+      await db.collection('records').add({
         'userId': uid,
         'amount': amount,
         'category': 'General',
@@ -97,14 +97,14 @@ class RecordController extends GetxController {
   }
 
   Future updateRecord(String id, double amount, String category) async {
-    await _db.collection('records').doc(id).update({
+    await db.collection('records').doc(id).update({
       'amount': amount,
       'category': category,
     });
   }
 
   Future deleteRecord(String id) async {
-    await _db.collection('records').doc(id).delete();
+    await db.collection('records').doc(id).delete();
   }
 
   getTotalIncome() {
@@ -137,5 +137,63 @@ class RecordController extends GetxController {
 
   getMonthlyBalance() {
     monthlyBalance.value = monthlyTotalIncome.value - monthlyTotalExpense.value;
+  }
+
+  // Get daily summary for current month
+  Future<List<Map<String, dynamic>>> getDailySummaryForMonth() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+    final snapshot = await db
+        .collection('records')
+        .where('userId', isEqualTo: uid)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfMonth))
+        .orderBy('date')
+        .get();
+
+    // Create a map to hold daily summaries
+    Map<String, Map<String, double>> dailySummary = {};
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final Timestamp ts = data['date'];
+      final date = ts.toDate();
+      final key = "${date.year}-${date.month}-${date.day}";
+
+      if (!dailySummary.containsKey(key)) {
+        dailySummary[key] = {'income': 0, 'expense': 0, 'balance': 0};
+      }
+
+      if (data['type'] == 'income') {
+        dailySummary[key]!['income'] =
+            dailySummary[key]!['income']! + (data['amount'] as num).toDouble();
+      } else {
+        dailySummary[key]!['expense'] =
+            dailySummary[key]!['expense']! + (data['amount'] as num).toDouble();
+      }
+
+      dailySummary[key]!['balance'] =
+          dailySummary[key]!['income']! - dailySummary[key]!['expense']!;
+    }
+
+    // Convert to list sorted by date
+    List<Map<String, dynamic>> result = dailySummary.entries
+        .map(
+          (e) => {
+            'date': e.key,
+            'income': e.value['income'],
+            'expense': e.value['expense'],
+            'balance': e.value['balance'],
+          },
+        )
+        .toList();
+
+    result.sort((a, b) => a['date'].compareTo(b['date']));
+
+    return result;
   }
 }
