@@ -1,1 +1,61 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"daily-earning-tracker-2ae07","appId":"1:731163949244:android:1ba05916242faac22eb8b9","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"daily-earning-tracker-2ae07","appId":"1:731163949244:ios:7255286f5f2fd6bb2eb8b9","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"daily-earning-tracker-2ae07","appId":"1:731163949244:ios:7255286f5f2fd6bb2eb8b9","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"daily-earning-tracker-2ae07","configurations":{"android":"1:731163949244:android:1ba05916242faac22eb8b9","ios":"1:731163949244:ios:7255286f5f2fd6bb2eb8b9","macos":"1:731163949244:ios:7255286f5f2fd6bb2eb8b9","web":"1:731163949244:web:42f0047646bdbe652eb8b9","windows":"1:731163949244:web:14e26248a102131e2eb8b9"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "daily-earning-tracker-2ae07",
+          "appId": "1:731163949244:android:1ba05916242faac22eb8b9",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "daily-earning-tracker-2ae07",
+          "appId": "1:731163949244:ios:7255286f5f2fd6bb2eb8b9",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "daily-earning-tracker-2ae07",
+          "appId": "1:731163949244:ios:7255286f5f2fd6bb2eb8b9",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "daily-earning-tracker-2ae07",
+          "configurations": {
+            "android": "1:731163949244:android:1ba05916242faac22eb8b9",
+            "ios": "1:731163949244:ios:7255286f5f2fd6bb2eb8b9",
+            "macos": "1:731163949244:ios:7255286f5f2fd6bb2eb8b9",
+            "web": "1:731163949244:web:42f0047646bdbe652eb8b9",
+            "windows": "1:731163949244:web:14e26248a102131e2eb8b9"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "nam5",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
