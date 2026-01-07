@@ -454,7 +454,7 @@ class _HomePageState extends State<HomePage> {
                                     'income',
                                     _selectedDate,
 
-                                    // categoryCtrl.value,
+                                    categoryCtrl.text,
                                   );
                                   amountCtrl.clear();
                                   categoryCtrl.clear();
@@ -470,7 +470,8 @@ class _HomePageState extends State<HomePage> {
                                     double.parse(amountCtrl.text),
                                     'expense',
                                     _selectedDate,
-                                    // categoryCtrl.value,
+
+                                    categoryCtrl.text,
                                   );
                                   amountCtrl.clear();
                                   categoryCtrl.clear();

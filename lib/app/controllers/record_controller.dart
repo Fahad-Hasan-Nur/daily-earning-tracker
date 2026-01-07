@@ -81,13 +81,18 @@ class RecordController extends GetxController {
         });
   }
 
-  Future addRecord(double amount, String type, DateTime date) async {
+  Future addRecord(
+    double amount,
+    String type,
+    DateTime date,
+    String cat,
+  ) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     try {
       await db.collection('records').add({
         'userId': uid,
         'amount': amount,
-        'category': 'General',
+        'category': cat,
         'type': type,
         'date': Timestamp.fromDate(date),
       });
