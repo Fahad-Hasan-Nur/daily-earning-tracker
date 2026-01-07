@@ -7,7 +7,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DateReportPage extends StatefulWidget {
-  const DateReportPage({super.key});
+  final DateTime? selectedDate; // <-- ADD THIS
+
+  const DateReportPage({super.key, this.selectedDate});
 
   @override
   State<DateReportPage> createState() => _DateReportPageState();
@@ -23,6 +25,18 @@ class _DateReportPageState extends State<DateReportPage> {
   var totalIncome = 0.0.obs;
   var totalExpense = 0.0.obs;
   var balance = 0.0.obs;
+
+
+@override
+void initState() {
+  super.initState();
+
+  _selectedDate = widget.selectedDate ?? DateTime.now();
+  _dateCtrl.text = _selectedDate.toString().split(' ')[0];
+
+  fetchDateRecords(); // fetch automatically
+}
+
 
   @override
   void dispose() {
