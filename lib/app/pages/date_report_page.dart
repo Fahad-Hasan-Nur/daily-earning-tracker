@@ -26,17 +26,15 @@ class _DateReportPageState extends State<DateReportPage> {
   var totalExpense = 0.0.obs;
   var balance = 0.0.obs;
 
+  @override
+  void initState() {
+    super.initState();
 
-@override
-void initState() {
-  super.initState();
+    _selectedDate = widget.selectedDate ?? DateTime.now();
+    _dateCtrl.text = _selectedDate.toString().split(' ')[0];
 
-  _selectedDate = widget.selectedDate ?? DateTime.now();
-  _dateCtrl.text = _selectedDate.toString().split(' ')[0];
-
-  fetchDateRecords(); // fetch automatically
-}
-
+    fetchDateRecords(); // fetch automatically
+  }
 
   @override
   void dispose() {
@@ -169,14 +167,44 @@ void initState() {
                         subtitle: Text(
                           '${date.toLocal().toString().split(' ')[0]}',
                         ),
-                        trailing: Text(
-                          '${isIncome ? '+' : '-'} Tk ${amount.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isIncome
-                                ? Colors.green[800]
-                                : Colors.red[800],
-                          ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '${isIncome ? '+' : '-'} Tk ${amount.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isIncome
+                                    ? Colors.green[800]
+                                    : Colors.red[800],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                Get.defaultDialog(
+                                  title: "Delete?",
+                                  middleText:
+                                      "Are you sure you want to delete this record?",
+                                  textConfirm: "Yes",
+                                  textCancel: "No",
+                                  confirmTextColor: Colors.white,
+                                  onConfirm: () async {
+                                    await record.deleteRecord(r.id);
+                                    Get.back();
+                                    fetchDateRecords(); // 🔥 refresh list
+                                  },
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ),
                     );

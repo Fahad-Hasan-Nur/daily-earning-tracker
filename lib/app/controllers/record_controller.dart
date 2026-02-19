@@ -12,11 +12,16 @@ class RecordController extends GetxController {
   var monthlyBalance = 0.0.obs;
   var monthlyTotalIncome = 0.0.obs;
   var monthlyTotalExpense = 0.0.obs;
+  var yearlyTotalIncome = 0.0.obs;
+var yearlyTotalExpense = 0.0.obs;
+var yearlyBalance = 0.0.obs;
+
 
   @override
   void onInit() {
     initiateDailyData();
     initiateMonthlyData();
+     calculateYearlyTotals();
     super.onInit();
   }
 
@@ -51,6 +56,33 @@ class RecordController extends GetxController {
           getMonthlyBalance();
         });
   }
+void calculateYearlyTotals() async {
+  final now = DateTime.now();
+
+  final startOfYear = DateTime(now.year, 1, 1);
+  final endOfYear = DateTime(now.year, 12, 31, 23, 59, 59);
+
+  final snapshot = await db
+      .collection('records')
+      .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYear))
+      .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfYear))
+      .get();
+
+  double income = 0.0;
+  double expense = 0.0;
+
+  for (var doc in snapshot.docs) {
+    if (doc['type'] == 'income') {
+      income += (doc['amount'] as num).toDouble();
+    } else {
+      expense += (doc['amount'] as num).toDouble();
+    }
+  }
+
+  yearlyTotalIncome.value = income;
+  yearlyTotalExpense.value = expense;
+  yearlyBalance.value = income - expense;
+}
 
   initiateDailyData() {
     final uid = FirebaseAuth.instance.currentUser!.uid;

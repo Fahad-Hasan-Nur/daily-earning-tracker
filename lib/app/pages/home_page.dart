@@ -80,6 +80,70 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: 10),
               Obx(
                 () => Container(
+                  height: 100,
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.3),
+                        blurRadius: 2,
+                        offset: const Offset(4, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.deepPurple,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(10),
+                            topRight: Radius.circular(10),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${DateTime.now().year} Year Balance: ${record.yearlyBalance.value.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 50,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Text(
+                              'Income: ${record.yearlyTotalIncome.value.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Container(width: 3, color: Colors.deepPurple),
+                            Text(
+                              'Expense: ${record.yearlyTotalExpense.value.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 10),
+
+              Obx(
+                () => Container(
                   // width: Get.width,
                   height: 100,
                   margin: const EdgeInsets.all(8),
