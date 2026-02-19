@@ -15,6 +15,8 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
   final record = Get.find<RecordController>();
   List<Map<String, dynamic>> dailyData = [];
   bool loading = true;
+  DateTime? startDate;
+  DateTime? endDate;
 
   @override
   void initState() {
@@ -22,11 +24,16 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
     fetchDailyData();
   }
 
-  fetchDailyData() async {
+  fetchDailyData({DateTime? from, DateTime? to}) async {
     setState(() {
       loading = true;
     });
-    dailyData = await record.getDailySummaryForMonth();
+
+    dailyData = await record.getDailySummaryForMonth(
+      startDate: from,
+      endDate: to,
+    );
+
     setState(() {
       loading = false;
     });
@@ -44,6 +51,57 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
           ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: MyColors.appColor,
+                          ),
+                          onPressed: () async {
+                            final picked = await showDateRangePicker(
+                              context: context,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2100),
+                            );
+
+                            if (picked != null) {
+                              startDate = picked.start;
+                              endDate = picked.end;
+
+                              fetchDailyData(from: startDate, to: endDate);
+                            }
+                          },
+                          child: Text(
+                            startDate == null
+                                ? "Select Date Range"
+                                : "${startDate!.day}/${startDate!.month}/${startDate!.year} - "
+                                      "${endDate!.day}/${endDate!.month}/${endDate!.year}",
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      // Reset Button
+                      if (startDate != null)
+                        IconButton(
+                          icon: const Icon(Icons.refresh),
+                          onPressed: () {
+                            startDate = null;
+                            endDate = null;
+                            fetchDailyData(); // reload default month
+                          },
+                        ),
+                    ],
+                  ),
+                ),
                 SizedBox(height: 10),
                 Expanded(
                   child: ListView.builder(
