@@ -246,6 +246,19 @@ class RecordController extends GetxController {
         .toList();
 
     result.sort((a, b) => a['date'].compareTo(b['date']));
+    // 🔹 Calculate Monthly Totals
+    double totalIncome = 0;
+    double totalExpense = 0;
+
+    for (var day in dailySummary.values) {
+      totalIncome += day['income']!;
+      totalExpense += day['expense']!;
+    }
+
+    // 🔹 Update Rx variables
+    monthlyTotalIncome.value = totalIncome;
+    monthlyTotalExpense.value = totalExpense;
+    monthlyBalance.value = totalIncome - totalExpense;
 
     return result;
   }
