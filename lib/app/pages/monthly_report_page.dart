@@ -39,6 +39,26 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
     });
   }
 
+  int get totalDays => dailyData.length;
+
+  double get averageIncome {
+    if (dailyData.isEmpty) return 0.0;
+    double total = dailyData.fold(
+      0.0,
+      (sum, item) => sum + (item['income'] ?? 0.0),
+    );
+    return total / dailyData.length;
+  }
+
+  double get averageExpense {
+    if (dailyData.isEmpty) return 0.0;
+    double total = dailyData.fold(
+      0.0,
+      (sum, item) => sum + (item['expense'] ?? 0.0),
+    );
+    return total / dailyData.length;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,6 +154,31 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
                           'Balance',
                           record.monthlyBalance.value,
                           Colors.blue,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _summaryCard(
+                          'Total Days',
+                          totalDays.toDouble(),
+                          Colors.purple,
+                        ),
+                        _summaryCard('Avg Income', averageIncome, Colors.teal),
+                        _summaryCard(
+                          'Avg Expense',
+                          averageExpense,
+                          Colors.orange,
                         ),
                       ],
                     ),
@@ -300,6 +345,34 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
             ),
             Text(
               value.toStringAsFixed(2),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryCardAvg(
+    String title,
+    double value,
+    Color color, {
+    bool isCount = false,
+  }) {
+    return Container(
+      width: (Get.width - 60) / 3,
+      height: 60,
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              title,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              isCount ? value.toInt().toString() : value.toStringAsFixed(2),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ],

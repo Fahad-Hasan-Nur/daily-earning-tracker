@@ -96,6 +96,58 @@ class _DateReportPageState extends State<DateReportPage> {
         });
   }
 
+  void _showEditDialog(DocumentSnapshot r) {
+    final amountCtrl = TextEditingController(text: r['amount'].toString());
+    final categoryCtrl = TextEditingController(text: r['category']);
+    DateTime selectedDate = (r['date'] as Timestamp).toDate();
+    String type = r['type'];
+
+    Get.defaultDialog(
+      title: "Edit Record",
+      content: Column(
+        children: [
+          TextField(
+            controller: amountCtrl,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(hintText: "Amount"),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: categoryCtrl,
+            decoration: const InputDecoration(hintText: "Detail"),
+          ),
+          const SizedBox(height: 10),
+          DropdownButton<String>(
+            value: type,
+            isExpanded: true,
+            items: ['income', 'expense']
+                .map(
+                  (e) =>
+                      DropdownMenuItem(value: e, child: Text(e.toUpperCase())),
+                )
+                .toList(),
+            onChanged: (val) {
+              type = val!;
+            },
+          ),
+        ],
+      ),
+      textConfirm: "Update",
+      textCancel: "Cancel",
+      confirmTextColor: Colors.white,
+      onConfirm: () async {
+        await record.updateRecord(
+          r.id,
+          double.parse(amountCtrl.text),
+          categoryCtrl.text,
+        );
+
+        Get.back();
+        fetchDateRecords(); // refresh date list
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -167,44 +219,61 @@ class _DateReportPageState extends State<DateReportPage> {
                         subtitle: Text(
                           '${date.toLocal().toString().split(' ')[0]}',
                         ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '${isIncome ? '+' : '-'} Tk ${amount.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isIncome
-                                    ? Colors.green[800]
-                                    : Colors.red[800],
+                        trailing: SizedBox(
+                          width: 120, // fixed width prevents layout overflow
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min, // 🔥 IMPORTANT
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                '${isIncome ? '+' : '-'} Tk ${amount.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: isIncome
+                                      ? Colors.green[800]
+                                      : Colors.red[800],
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete,
-                                size: 20,
-                                color: Colors.grey,
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      size: 18,
+                                      color: Colors.blue,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () => _showEditDialog(r),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      size: 18,
+                                      color: Colors.grey,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () {
+                                      Get.defaultDialog(
+                                        title: "Delete?",
+                                        middleText: "Are you sure?",
+                                        onConfirm: () async {
+                                          await record.deleteRecord(r.id);
+                                          Get.back();
+                                          fetchDateRecords();
+                                        },
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () {
-                                Get.defaultDialog(
-                                  title: "Delete?",
-                                  middleText:
-                                      "Are you sure you want to delete this record?",
-                                  textConfirm: "Yes",
-                                  textCancel: "No",
-                                  confirmTextColor: Colors.white,
-                                  onConfirm: () async {
-                                    await record.deleteRecord(r.id);
-                                    Get.back();
-                                    fetchDateRecords(); // 🔥 refresh list
-                                  },
-                                );
-                              },
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     );

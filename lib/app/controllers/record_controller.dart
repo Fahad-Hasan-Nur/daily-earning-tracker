@@ -138,6 +138,9 @@ class RecordController extends GetxController {
       'amount': amount,
       'category': category,
     });
+    await initiateDailyData();
+    await initiateMonthlyData();
+    calculateYearlyTotals();
   }
 
   Future deleteRecord(String id) async {
