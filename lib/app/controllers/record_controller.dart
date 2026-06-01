@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:daily_income_tracker/app/data/models/category_model.dart';
 import 'package:daily_income_tracker/app/data/models/record_model.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,7 +18,9 @@ class RecordController extends GetxController {
   final RxList<RecordModel> monthlyRecords = <RecordModel>[].obs;
 
   // Category list used for dropdown selection
-  final RxList<String> categories = <String>['Other category'].obs;
+  final RxList<CategoryModel> categories = <CategoryModel>[
+    CategoryModel.other(),
+  ].obs;
 
   CollectionReference<Map<String, dynamic>> get _categoriesRef =>
       _db.collection('users').doc(_uid).collection('categories');
@@ -155,12 +158,14 @@ class RecordController extends GetxController {
     double amount,
     String type,
     DateTime date,
+    String categoryId,
     String category,
   ) async {
     try {
       await _db.collection('records').add({
         'userId': _uid,
         'amount': amount,
+        'categoryId': categoryId,
         'category': category,
         'type': type,
         'date': Timestamp.fromDate(date),
@@ -175,26 +180,32 @@ class RecordController extends GetxController {
     }
   }
 
-  Future<void> addCategory(String category) async {
+  Future<CategoryModel?> addCategory(String category) async {
     final normalized = category.trim();
-    if (normalized.isEmpty) return;
+    if (normalized.isEmpty) return null;
 
-    final duplicate = categories.any(
-      (existing) => existing.toLowerCase() == normalized.toLowerCase(),
+    final existing = categories.firstWhere(
+      (existing) => existing.name.toLowerCase() == normalized.toLowerCase(),
+      orElse: () => CategoryModel.other(),
     );
-    if (duplicate) {
-      return;
+
+    if (existing.name.toLowerCase() == normalized.toLowerCase() &&
+        existing.id != CategoryModel.other().id) {
+      return existing;
     }
 
     try {
-      await _categoriesRef.add({'name': normalized});
-      categories.add(normalized);
+      final docRef = await _categoriesRef.add({'name': normalized});
+      final categoryModel = CategoryModel(id: docRef.id, name: normalized);
+      categories.add(categoryModel);
+      return categoryModel;
     } catch (e) {
       Get.snackbar(
         'Error',
         'Failed to save category: $e',
         snackPosition: SnackPosition.BOTTOM,
       );
+      return null;
     }
   }
 
@@ -203,17 +214,16 @@ class RecordController extends GetxController {
       final snapshot = await _categoriesRef.orderBy('name').get();
       final loaded =
           snapshot.docs
-              .map((doc) => doc.data()['name'] as String?)
-              .whereType<String>()
-              .map((value) => value.trim())
-              .where((value) => value.isNotEmpty)
-              .toSet()
+              .map((doc) => CategoryModel.fromFirestore(doc))
+              .where((model) => model.name.isNotEmpty)
               .toList()
-            ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+            ..sort(
+              (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            );
 
       categories.value = [
-        'Other category',
-        ...loaded.where((name) => name.toLowerCase() != 'other category'),
+        CategoryModel.other(),
+        ...loaded.where((category) => category.id != CategoryModel.other().id),
       ];
     } catch (e) {
       Get.snackbar(
@@ -224,10 +234,16 @@ class RecordController extends GetxController {
     }
   }
 
-  Future<void> updateRecord(String id, double amount, String category) async {
+  Future<void> updateRecord(
+    String id,
+    double amount,
+    String categoryId,
+    String category,
+  ) async {
     try {
       await _db.collection('records').doc(id).update({
         'amount': amount,
+        'categoryId': categoryId,
         'category': category,
       });
       calculateYearlyTotals();

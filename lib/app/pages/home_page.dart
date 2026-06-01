@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/record_controller.dart';
+import '../data/models/category_model.dart';
 import '../utils/colors.dart';
 import 'package:intl/intl.dart';
 
@@ -21,7 +22,7 @@ class _HomePageState extends State<HomePage> {
   DateTime _selectedDate = DateTime.now();
   final _formKey = GlobalKey<FormState>();
   String _transactionType = 'income'; // 'income' or 'expense'
-  String? _selectedCategory;
+  String? _selectedCategoryId;
 
   @override
   void initState() {
@@ -58,7 +59,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final newCategory = newCategoryCtrl.text.trim();
               if (newCategory.isEmpty) {
                 Get.snackbar(
@@ -68,8 +69,10 @@ class _HomePageState extends State<HomePage> {
                 );
                 return;
               }
-              record.addCategory(newCategory);
-              setState(() => _selectedCategory = newCategory);
+              final category = await record.addCategory(newCategory);
+              if (category != null) {
+                setState(() => _selectedCategoryId = category.id);
+              }
               Get.back();
             },
             child: const Text('Add'),
@@ -283,12 +286,12 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 12),
             Obx(() {
-              _selectedCategory ??= record.categories.first;
+              _selectedCategoryId ??= record.categories.first.id;
               return Row(
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _selectedCategory,
+                      value: _selectedCategoryId,
                       decoration: _inputDecoration(
                         'Category',
                         Icons.label_outline,
@@ -296,13 +299,13 @@ class _HomePageState extends State<HomePage> {
                       items: record.categories
                           .map(
                             (category) => DropdownMenuItem(
-                              value: category,
-                              child: Text(category),
+                              value: category.id,
+                              child: Text(category.name),
                             ),
                           )
                           .toList(),
                       onChanged: (value) =>
-                          setState(() => _selectedCategory = value),
+                          setState(() => _selectedCategoryId = value),
                       validator: (val) =>
                           val == null || val.isEmpty ? 'Choose category' : null,
                     ),
@@ -333,11 +336,16 @@ class _HomePageState extends State<HomePage> {
               child: ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
+                    final selectedCategory = record.categories.firstWhere(
+                      (cat) => cat.id == _selectedCategoryId,
+                      orElse: CategoryModel.other,
+                    );
                     record.addRecord(
                       double.parse(amountCtrl.text),
                       _transactionType,
                       _selectedDate,
-                      _selectedCategory ?? 'Other category',
+                      selectedCategory.id,
+                      selectedCategory.name,
                     );
                     amountCtrl.clear();
                   }

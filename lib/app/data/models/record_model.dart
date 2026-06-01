@@ -4,6 +4,7 @@ class RecordModel {
   final String id;
   final String userId;
   final double amount;
+  final String categoryId;
   final String category;
   final String type; // 'income' or 'expense'
   final DateTime date;
@@ -12,6 +13,7 @@ class RecordModel {
     required this.id,
     required this.userId,
     required this.amount,
+    required this.categoryId,
     required this.category,
     required this.type,
     required this.date,
@@ -19,6 +21,11 @@ class RecordModel {
 
   factory RecordModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final categoryIdValue = data['categoryId'];
+    final categoryId =
+        categoryIdValue is String && categoryIdValue.trim().isNotEmpty
+        ? categoryIdValue
+        : 'other';
     final categoryValue = data['category'];
     final category = categoryValue is String && categoryValue.trim().isNotEmpty
         ? categoryValue
@@ -28,6 +35,7 @@ class RecordModel {
       id: doc.id,
       userId: data['userId'] ?? '',
       amount: (data['amount'] as num).toDouble(),
+      categoryId: categoryId,
       category: category,
       type: data['type'] ?? 'expense',
       date: (data['date'] as Timestamp).toDate(),
@@ -38,6 +46,7 @@ class RecordModel {
     return {
       'userId': userId,
       'amount': amount,
+      'categoryId': categoryId,
       'category': category,
       'type': type,
       'date': Timestamp.fromDate(date),
