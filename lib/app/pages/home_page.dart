@@ -122,12 +122,12 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildYearlyReportCard(record),
+
             // 1. Dashboard Summary Card
             _buildBalanceCard(record),
 
             // 2. Yearly Report Card
-            _buildYearlyReportCard(record),
-
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Text(
@@ -270,7 +270,8 @@ class _HomePageState extends State<HomePage> {
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF4CAF50), Color(0xFF45a049)],
+              colors: [MyColors.appColor, Color(0xFF674ABB)],
+
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),

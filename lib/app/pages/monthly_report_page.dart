@@ -114,6 +114,7 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
                   child: dailyData.isEmpty
                       ? _buildEmptyState()
                       : ListView.builder(
+                          physics: const BouncingScrollPhysics(),
                           padding: const EdgeInsets.only(bottom: 20),
                           itemCount: dailyData.length,
                           itemBuilder: (context, index) {
@@ -488,8 +489,8 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
 
   Widget _buildSecondaryStats() {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      margin: const EdgeInsets.all(1),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
