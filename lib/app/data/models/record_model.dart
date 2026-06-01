@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RecordModel {
-final String id;
+  final String id;
   final String userId;
   final double amount;
   final String category;
@@ -19,11 +19,16 @@ final String id;
 
   factory RecordModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final categoryValue = data['category'];
+    final category = categoryValue is String && categoryValue.trim().isNotEmpty
+        ? categoryValue
+        : 'Other category';
+
     return RecordModel(
       id: doc.id,
       userId: data['userId'] ?? '',
       amount: (data['amount'] as num).toDouble(),
-      category: data['category'] ?? '',
+      category: category,
       type: data['type'] ?? 'expense',
       date: (data['date'] as Timestamp).toDate(),
     );

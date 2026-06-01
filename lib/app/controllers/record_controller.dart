@@ -16,6 +16,12 @@ class RecordController extends GetxController {
   final RxList<RecordModel> records = <RecordModel>[].obs;
   final RxList<RecordModel> monthlyRecords = <RecordModel>[].obs;
 
+  // Category list used for dropdown selection
+  final RxList<String> categories = <String>['Other category'].obs;
+
+  CollectionReference<Map<String, dynamic>> get _categoriesRef =>
+      _db.collection('users').doc(_uid).collection('categories');
+
   // Rx totals
   final RxDouble balance = 0.0.obs;
   final RxDouble totalIncome = 0.0.obs;
@@ -34,6 +40,7 @@ class RecordController extends GetxController {
 
   @override
   void onInit() {
+    loadCategories();
     initiateDailyData();
     initiateMonthlyData();
     calculateYearlyTotals();
@@ -49,7 +56,9 @@ class RecordController extends GetxController {
 
   // Fetch records for a specific date range
   Future<List<RecordModel>> getRecordsByDateRange(
-      DateTime start, DateTime end) async {
+    DateTime start,
+    DateTime end,
+  ) async {
     final snapshot = await _db
         .collection('records')
         .where('userId', isEqualTo: _uid)
@@ -62,7 +71,9 @@ class RecordController extends GetxController {
 
   // Common query logic
   Stream<QuerySnapshot<Map<String, dynamic>>> _getRecordsStream(
-      DateTime start, DateTime end) {
+    DateTime start,
+    DateTime end,
+  ) {
     return _db
         .collection('records')
         .where('userId', isEqualTo: _uid)
@@ -78,8 +89,9 @@ class RecordController extends GetxController {
 
     _dailySub?.cancel();
     _dailySub = _getRecordsStream(startOfDay, endOfDay).listen((snapshot) {
-      records.value =
-          snapshot.docs.map((doc) => RecordModel.fromFirestore(doc)).toList();
+      records.value = snapshot.docs
+          .map((doc) => RecordModel.fromFirestore(doc))
+          .toList();
       _calculateDailyTotals();
     });
   }
@@ -90,9 +102,12 @@ class RecordController extends GetxController {
     final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
 
     _monthlySub?.cancel();
-    _monthlySub = _getRecordsStream(startOfMonth, endOfMonth).listen((snapshot) {
-      monthlyRecords.value =
-          snapshot.docs.map((doc) => RecordModel.fromFirestore(doc)).toList();
+    _monthlySub = _getRecordsStream(startOfMonth, endOfMonth).listen((
+      snapshot,
+    ) {
+      monthlyRecords.value = snapshot.docs
+          .map((doc) => RecordModel.fromFirestore(doc))
+          .toList();
       _calculateMonthlyTotals();
     });
   }
@@ -106,8 +121,7 @@ class RecordController extends GetxController {
   void _calculateMonthlyTotals() {
     monthlyTotalIncome.value = _calculateTotal(monthlyRecords, 'income');
     monthlyTotalExpense.value = _calculateTotal(monthlyRecords, 'expense');
-    monthlyBalance.value =
-        monthlyTotalIncome.value - monthlyTotalExpense.value;
+    monthlyBalance.value = monthlyTotalIncome.value - monthlyTotalExpense.value;
   }
 
   double _calculateTotal(List<RecordModel> list, String type) {
@@ -128,8 +142,9 @@ class RecordController extends GetxController {
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfYear))
         .get();
 
-    final yearlyRecords =
-        snapshot.docs.map((doc) => RecordModel.fromFirestore(doc)).toList();
+    final yearlyRecords = snapshot.docs
+        .map((doc) => RecordModel.fromFirestore(doc))
+        .toList();
 
     yearlyTotalIncome.value = _calculateTotal(yearlyRecords, 'income');
     yearlyTotalExpense.value = _calculateTotal(yearlyRecords, 'expense');
@@ -152,8 +167,60 @@ class RecordController extends GetxController {
       });
       calculateYearlyTotals(); // Added to ensure yearly total updates
     } catch (e) {
-      Get.snackbar('Error', 'Failed to add record: $e',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Error',
+        'Failed to add record: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> addCategory(String category) async {
+    final normalized = category.trim();
+    if (normalized.isEmpty) return;
+
+    final duplicate = categories.any(
+      (existing) => existing.toLowerCase() == normalized.toLowerCase(),
+    );
+    if (duplicate) {
+      return;
+    }
+
+    try {
+      await _categoriesRef.add({'name': normalized});
+      categories.add(normalized);
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to save category: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> loadCategories() async {
+    try {
+      final snapshot = await _categoriesRef.orderBy('name').get();
+      final loaded =
+          snapshot.docs
+              .map((doc) => doc.data()['name'] as String?)
+              .whereType<String>()
+              .map((value) => value.trim())
+              .where((value) => value.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+      categories.value = [
+        'Other category',
+        ...loaded.where((name) => name.toLowerCase() != 'other category'),
+      ];
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to load categories: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
@@ -165,8 +232,11 @@ class RecordController extends GetxController {
       });
       calculateYearlyTotals();
     } catch (e) {
-      Get.snackbar('Error', 'Failed to update record: $e',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Error',
+        'Failed to update record: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
@@ -175,8 +245,11 @@ class RecordController extends GetxController {
       await _db.collection('records').doc(id).delete();
       calculateYearlyTotals();
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete record: $e',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Error',
+        'Failed to delete record: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
@@ -204,8 +277,9 @@ class RecordController extends GetxController {
         .orderBy('date')
         .get();
 
-    final fetchedRecords =
-        snapshot.docs.map((doc) => RecordModel.fromFirestore(doc)).toList();
+    final fetchedRecords = snapshot.docs
+        .map((doc) => RecordModel.fromFirestore(doc))
+        .toList();
 
     final Map<String, Map<String, double>> dailySummary = {};
 
@@ -245,8 +319,7 @@ class RecordController extends GetxController {
     // Update monthly totals
     monthlyTotalIncome.value = _calculateTotal(fetchedRecords, 'income');
     monthlyTotalExpense.value = _calculateTotal(fetchedRecords, 'expense');
-    monthlyBalance.value =
-        monthlyTotalIncome.value - monthlyTotalExpense.value;
+    monthlyBalance.value = monthlyTotalIncome.value - monthlyTotalExpense.value;
 
     return result;
   }

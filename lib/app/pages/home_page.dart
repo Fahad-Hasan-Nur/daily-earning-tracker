@@ -1,4 +1,3 @@
-import 'package:daily_income_tracker/app/pages/date_report_page.dart';
 import 'package:daily_income_tracker/app/pages/monthly_report_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -16,12 +15,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final amountCtrl = TextEditingController();
-  final categoryCtrl = TextEditingController();
+  final newCategoryCtrl = TextEditingController();
   final dateCtrl = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   final _formKey = GlobalKey<FormState>();
   String _transactionType = 'income'; // 'income' or 'expense'
+  String? _selectedCategory;
 
   @override
   void initState() {
@@ -43,6 +43,40 @@ class _HomePageState extends State<HomePage> {
         dateCtrl.text = DateFormat('yyyy-MM-dd').format(_selectedDate);
       });
     }
+  }
+
+  Future<void> _showAddCategoryDialog(RecordController record) async {
+    newCategoryCtrl.clear();
+
+    await Get.dialog(
+      AlertDialog(
+        title: const Text('Create Category'),
+        content: TextField(
+          controller: newCategoryCtrl,
+          decoration: const InputDecoration(labelText: 'Category name'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final newCategory = newCategoryCtrl.text.trim();
+              if (newCategory.isEmpty) {
+                Get.snackbar(
+                  'Invalid',
+                  'Category name cannot be empty',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+                return;
+              }
+              record.addCategory(newCategory);
+              setState(() => _selectedCategory = newCategory);
+              Get.back();
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -248,14 +282,43 @@ class _HomePageState extends State<HomePage> {
                   : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: categoryCtrl,
-              decoration: _inputDecoration(
-                'Detail / Category',
-                Icons.label_outline,
-              ),
-              validator: (val) => val!.isEmpty ? "Enter detail" : null,
-            ),
+            Obx(() {
+              _selectedCategory ??= record.categories.first;
+              return Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedCategory,
+                      decoration: _inputDecoration(
+                        'Category',
+                        Icons.label_outline,
+                      ),
+                      items: record.categories
+                          .map(
+                            (category) => DropdownMenuItem(
+                              value: category,
+                              child: Text(category),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) =>
+                          setState(() => _selectedCategory = value),
+                      validator: (val) =>
+                          val == null || val.isEmpty ? 'Choose category' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => _showAddCategoryDialog(record),
+                    icon: const Icon(
+                      Icons.add_circle_outline,
+                      color: MyColors.appColor,
+                    ),
+                    tooltip: 'Create category',
+                  ),
+                ],
+              );
+            }),
             const SizedBox(height: 12),
             TextFormField(
               controller: dateCtrl,
@@ -274,10 +337,9 @@ class _HomePageState extends State<HomePage> {
                       double.parse(amountCtrl.text),
                       _transactionType,
                       _selectedDate,
-                      categoryCtrl.text,
+                      _selectedCategory ?? 'Other category',
                     );
                     amountCtrl.clear();
-                    categoryCtrl.clear();
                   }
                 },
                 style: ElevatedButton.styleFrom(
