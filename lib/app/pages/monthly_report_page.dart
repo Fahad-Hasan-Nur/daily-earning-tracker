@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/record_controller.dart';
+import '../data/models/category_model.dart';
 import '../utils/colors.dart';
 import 'date_report_page.dart';
 import 'package:intl/intl.dart';
@@ -72,12 +73,17 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+          ),
           onPressed: () => Get.back(),
         ),
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator(color: MyColors.appColor))
+          ? const Center(
+              child: CircularProgressIndicator(color: MyColors.appColor),
+            )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -86,6 +92,9 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
 
                 // 2. Date Filter
                 _buildDateFilter(),
+
+                // 2.5. Category Breakdown
+                _buildCategorySummary(),
 
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -120,52 +129,64 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
   }
 
   Widget _buildMonthlyStatsHero() {
-    return Obx(() => Container(
-          width: double.infinity,
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [MyColors.appColor, Color(0xFF674ABB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return Obx(
+      () => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [MyColors.appColor, Color(0xFF674ABB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: MyColors.appColor.withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: MyColors.appColor.withOpacity(0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
+          ],
+        ),
+        child: Column(
+          children: [
+            Text(
+              startDate == null
+                  ? 'Current Month Overview'
+                  : 'Custom Range Overview',
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tk ${record.monthlyBalance.value.toStringAsFixed(2)}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
               ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Text(
-                startDate == null ? 'Current Month Overview' : 'Custom Range Overview',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Tk ${record.monthlyBalance.value.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _heroStatItem(
+                  'Total In',
+                  record.monthlyTotalIncome.value,
+                  Icons.trending_up,
                 ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _heroStatItem('Total In', record.monthlyTotalIncome.value, Icons.trending_up),
-                  Container(width: 1, height: 40, color: Colors.white24),
-                  _heroStatItem('Total Out', record.monthlyTotalExpense.value, Icons.trending_down),
-                ],
-              ),
-            ],
-          ),
-        ));
+                Container(width: 1, height: 40, color: Colors.white24),
+                _heroStatItem(
+                  'Total Out',
+                  record.monthlyTotalExpense.value,
+                  Icons.trending_down,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _heroStatItem(String label, double value, IconData icon) {
@@ -175,7 +196,10 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
           children: [
             Icon(icon, size: 14, color: Colors.white70),
             const SizedBox(width: 4),
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
           ],
         ),
         const SizedBox(height: 4),
@@ -235,7 +259,11 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
               },
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_today_rounded, size: 20, color: MyColors.appColor),
+                  const Icon(
+                    Icons.calendar_today_rounded,
+                    size: 20,
+                    color: MyColors.appColor,
+                  ),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,7 +302,11 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
 
   Widget _buildDailyTile(Map<String, dynamic> day) {
     final parts = day['date'].split('-');
-    final date = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+    final date = DateTime(
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+      int.parse(parts[2]),
+    );
     final dayLabel = DateFormat('dd').format(date);
     final monthLabel = DateFormat('MMM').format(date);
 
@@ -311,7 +343,10 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
                   ),
                   Text(
                     monthLabel,
-                    style: const TextStyle(fontSize: 10, color: MyColors.appColor),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: MyColors.appColor,
+                    ),
                   ),
                 ],
               ),
@@ -339,7 +374,10 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.black38)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: Colors.black38),
+        ),
         Text(
           value.toStringAsFixed(0),
           style: TextStyle(
@@ -348,6 +386,89 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
             fontSize: 14,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildCategorySummary() {
+    final record = Get.find<RecordController>();
+    final categoryTotals = record.getCategoryTotals(record.monthlyRecords);
+
+    if (categoryTotals.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Text(
+            'Category Breakdown',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: MyColors.appColor,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: categoryTotals.entries.map((entry) {
+                final categoryId = entry.key;
+                final total = entry.value;
+                final category = record.categories.firstWhere(
+                  (cat) => cat.id == categoryId,
+                  orElse: () =>
+                      const CategoryModel(id: 'other', name: 'Other category'),
+                );
+
+                return Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        category.name,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: MyColors.appColor,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Tk ${total.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -378,10 +499,18 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
     );
   }
 
-  Widget _miniStat(String label, double value, Color color, {bool isInt = false}) {
+  Widget _miniStat(
+    String label,
+    double value,
+    Color color, {
+    bool isInt = false,
+  }) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.black54, fontSize: 12),
+        ),
         const SizedBox(height: 6),
         Text(
           isInt ? value.toInt().toString() : value.toStringAsFixed(0),

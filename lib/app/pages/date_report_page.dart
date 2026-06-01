@@ -1,4 +1,5 @@
 import 'package:daily_income_tracker/app/data/models/record_model.dart';
+import 'package:daily_income_tracker/app/data/models/category_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/record_controller.dart';
@@ -148,6 +149,97 @@ class _DateReportPageState extends State<DateReportPage> {
     );
   }
 
+  Widget _buildCategorySummary() {
+    if (dateRecords.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final categoryTotals = <String, double>{};
+    for (var record in dateRecords) {
+      categoryTotals[record.categoryId] =
+          (categoryTotals[record.categoryId] ?? 0) + record.amount;
+    }
+
+    if (categoryTotals.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Text(
+            'Category Breakdown',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: MyColors.appColor,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: categoryTotals.entries.map((entry) {
+                final categoryId = entry.key;
+                final total = entry.value;
+                final record = Get.find<RecordController>();
+                final category = record.categories.firstWhere(
+                  (cat) => cat.id == categoryId,
+                  orElse: () =>
+                      const CategoryModel(id: 'other', name: 'Other category'),
+                );
+
+                return Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        category.name,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: MyColors.appColor,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Tk ${total.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
   InputDecoration _dialogInputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
@@ -184,6 +276,9 @@ class _DateReportPageState extends State<DateReportPage> {
 
           // 2. Date Selector Card
           _buildDateSelector(),
+
+          // 2.5 Category Breakdown
+          _buildCategorySummary(),
 
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
