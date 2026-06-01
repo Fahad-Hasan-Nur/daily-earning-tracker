@@ -7,10 +7,8 @@ import '../controllers/record_controller.dart';
 import '../utils/colors.dart';
 import 'package:intl/intl.dart';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class HomePage extends StatefulWidget {
-  HomePage({super.key});
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -18,521 +16,438 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final amountCtrl = TextEditingController();
-
   final categoryCtrl = TextEditingController();
   final dateCtrl = TextEditingController();
 
-  final categories = [
-    'Food',
-    'Rent',
-    'Transport',
-    'Shopping',
-    'Salary',
-    'Other',
-  ];
   DateTime _selectedDate = DateTime.now();
   final _formKey = GlobalKey<FormState>();
+  String _transactionType = 'income'; // 'income' or 'expense'
+
+  @override
+  void initState() {
+    super.initState();
+    dateCtrl.text = DateFormat('yyyy-MM-dd').format(_selectedDate);
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        dateCtrl.text = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = Get.find<AuthController>();
     final record = Get.put(RecordController());
-    Future<void> _pickDate() async {
-      final picked = await showDatePicker(
-        context: context,
-        initialDate: _selectedDate,
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2100),
-      );
-
-      if (picked != null) {
-        setState(() {
-          _selectedDate = picked;
-          dateCtrl.text = _selectedDate.toLocal().toString().split(' ')[0];
-        });
-      }
-    }
 
     return Scaffold(
       backgroundColor: MyColors.appBg,
       appBar: AppBar(
+        elevation: 0,
         backgroundColor: MyColors.appColor,
-        title: Text('Dashboard', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Dashboard',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-            onPressed: () => Get.to(MonthlyReportPage()),
-            icon: Icon(Icons.calendar_month, color: Colors.white),
+            onPressed: () => Get.to(const MonthlyReportPage()),
+            icon: const Icon(Icons.analytics_outlined, color: Colors.white),
           ),
-
           IconButton(
             onPressed: () => auth.logout(),
-            icon: Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
           ),
         ],
       ),
-
-      // 🔽 THIS IS WHERE STEP 4 GOES
       body: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              SizedBox(height: 10),
-              Obx(
-                () => Container(
-                  height: 100,
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
-                        blurRadius: 2,
-                        offset: const Offset(4, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.deepPurple,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(10),
-                            topRight: Radius.circular(10),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${DateTime.now().year} Year Balance: ${record.yearlyBalance.value.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: 50,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Text(
-                              'Income: ${record.yearlyTotalIncome.value.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Container(width: 3, color: Colors.deepPurple),
-                            Text(
-                              'Expense: ${record.yearlyTotalExpense.value.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Dashboard Summary Card
+            _buildBalanceCard(record),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Text(
+                "Add Transaction",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: MyColors.appColor,
                 ),
               ),
-              SizedBox(height: 10),
+            ),
 
-              Obx(
-                () => Container(
-                  // width: Get.width,
-                  height: 100,
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.3),
-                        blurRadius: 2,
-                        offset: Offset(4, 4),
-                      ),
-                    ],
-                  ),
+            // 2. Transaction Input Form
+            _buildTransactionForm(record),
 
-                  child: Column(
-                    children: [
-                      Container(
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: MyColors.appColor,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(10),
-                            topRight: Radius.circular(10),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            DateFormat('MMMM').format(DateTime.now()) +
-                                ' Balance: ${record.monthlyBalance.value.toStringAsFixed(2)}',
-
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(
-                        width: Get.width - 25,
-                        height: 50,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Center(
-                              child: Text(
-                                maxLines: 4,
-                                overflow: TextOverflow.ellipsis,
-                                'Income: ${record.monthlyTotalIncome.value.toStringAsFixed(2)}',
-
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              width: 3,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: MyColors.appColor,
-                              ),
-                            ),
-                            Center(
-                              child: Text(
-                                maxLines: 4,
-                                overflow: TextOverflow.ellipsis,
-                                'Expense: ${record.monthlyTotalExpense.value.toStringAsFixed(2)}',
-
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: 10),
-              Text(
-                DateFormat('dd MMMM yyyy').format(DateTime.now()),
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-
-              Obx(
-                () => Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _summaryCard(
-                        'Income',
-                        record.totalIncome.value,
-                        Colors.green,
-                      ),
-                      _summaryCard(
-                        'Expense',
-                        record.totalExpense.value,
-                        Colors.red,
-                      ),
-                      _summaryCard(
-                        'Balance',
-                        record.balance.value,
-                        Colors.blue,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Container(
-                // decoration: BoxDecoration(
-                //   color: MyColors.appColor,
-                //   borderRadius: BorderRadius.circular(10),
-                // ),
-                margin: const EdgeInsets.all(8),
-                child: Column(
-                  children: [
-                    SizedBox(height: 10),
-                    Text(
-                      "Add Transaction",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Recent Transactions",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: MyColors.appColor,
                     ),
-                    SizedBox(height: 10),
-
-                    Container(
-                      padding: const EdgeInsets.all(8),
-
-                      child: Column(
-                        children: [
-                          TextFormField(
-                            controller: amountCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              hintText: 'Amount',
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: 18,
-                                horizontal: 20,
-                              ),
-
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            validator: (String? value) {
-                              if (value!.isEmpty) {
-                                return "Please enter amount";
-                              } else if (double.tryParse(value) == null) {
-                                return "Please enter valid amount";
-                              }
-
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 10),
-
-                          TextFormField(
-                            controller: categoryCtrl,
-                            keyboardType: TextInputType.text,
-                            decoration: InputDecoration(
-                              hintText: 'Detail',
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: 18,
-                                horizontal: 20,
-                              ),
-
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            validator: (String? value) {
-                              if (value!.isEmpty) {
-                                return "Please enter detail";
-                              }
-
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 10),
-
-                          TextFormField(
-                            controller: dateCtrl,
-                            readOnly: true,
-                            onTap: _pickDate,
-                            keyboardType: TextInputType.text,
-                            decoration: InputDecoration(
-                              hintText: 'Date',
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: 18,
-                                horizontal: 20,
-                              ),
-
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            validator: (String? value) {
-                              if (value!.isEmpty) {
-                                return "Please enter date";
-                              }
-
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 10),
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              ElevatedButton(
-                                onPressed: () {
-                                  if (_formKey.currentState!.validate()) {
-                                    record.addRecord(
-                                      double.parse(amountCtrl.text),
-                                      'income',
-                                      _selectedDate,
-
-                                      categoryCtrl.text,
-                                    );
-                                    amountCtrl.clear();
-                                    categoryCtrl.clear();
-                                    dateCtrl.clear();
-                                  }
-                                },
-                                child: const Text('Add Income'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  if (_formKey.currentState!.validate()) {
-                                    record.addRecord(
-                                      double.parse(amountCtrl.text),
-                                      'expense',
-                                      _selectedDate,
-
-                                      categoryCtrl.text,
-                                    );
-                                    amountCtrl.clear();
-                                    categoryCtrl.clear();
-                                    dateCtrl.clear();
-                                  }
-                                },
-                                child: const Text('Add Expense'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  Text(
+                    DateFormat('dd MMM yyyy').format(DateTime.now()),
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                ],
               ),
+            ),
 
-              const Divider(),
+            // 3. Today's Summary
+            _buildDailyMiniSummary(record),
 
-              // 3️⃣ Scrollable Record List (use Expanded to fill remaining space)
-              SizedBox(
-                height: 500,
-                child: Obx(
-                  () => ListView.builder(
-                    // physics: const NeverScrollableScrollPhysics(),
-                    itemCount: record.records.length,
-                    itemBuilder: (_, i) {
-                      final r = record.records[i];
-                      final isIncome = r.get('type') == 'income';
-                      final amount = (r.get('amount') as num).toDouble();
-                      final category = r.get('category') ?? 'N/A';
-                      final date = (r.get('date') as Timestamp).toDate();
+            // 4. Record List
+            _buildRecordList(record),
+          ],
+        ),
+      ),
+    );
+  }
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        color: isIncome ? Colors.green[50] : Colors.red[50],
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          leading: CircleAvatar(
-                            radius: 25,
-                            backgroundColor: isIncome
-                                ? Colors.green
-                                : Colors.red,
-                            child: Icon(
-                              isIncome
-                                  ? Icons.arrow_downward
-                                  : Icons.arrow_upward,
-                              color: Colors.white,
-                            ),
-                          ),
-                          title: Text(
-                            '$category',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          subtitle: Text(
-                            '${date.toLocal().toString().split(' ')[0]}',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                isIncome
-                                    ? '+ Tk ${amount.toStringAsFixed(2)}'
-                                    : '- Tk ${amount.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: isIncome
-                                      ? Colors.green[800]
-                                      : Colors.red[800],
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.grey,
-                                ),
-                                onPressed: () => record.deleteRecord(r.id),
-                                padding: EdgeInsets.zero,
-                                constraints: BoxConstraints(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+  Widget _buildBalanceCard(RecordController record) {
+    return Obx(
+      () => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [MyColors.appColor, Color(0xFF674ABB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: MyColors.appColor.withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            const Text(
+              'Total Balance',
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tk ${record.monthlyBalance.value.toStringAsFixed(2)}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _balanceItem(
+                  'Income',
+                  record.monthlyTotalIncome.value,
+                  Icons.arrow_downward,
+                ),
+                Container(width: 1, height: 40, color: Colors.white24),
+                _balanceItem(
+                  'Expense',
+                  record.monthlyTotalExpense.value,
+                  Icons.arrow_upward,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _balanceItem(String label, double value, IconData icon) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: Colors.white70),
+            const SizedBox(width: 4),
+            Text(label, style: const TextStyle(color: Colors.white70)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Tk ${value.toStringAsFixed(0)}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTransactionForm(RecordController record) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            // Type Toggle
+            Container(
+              decoration: BoxDecoration(
+                color: MyColors.appBg.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  _typeButton('income', 'Income'),
+                  _typeButton('expense', 'Expense'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: amountCtrl,
+              keyboardType: TextInputType.number,
+              decoration: _inputDecoration('Amount', Icons.attach_money),
+              validator: (val) => val!.isEmpty || double.tryParse(val) == null
+                  ? "Invalid"
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: categoryCtrl,
+              decoration: _inputDecoration(
+                'Detail / Category',
+                Icons.label_outline,
+              ),
+              validator: (val) => val!.isEmpty ? "Enter detail" : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: dateCtrl,
+              readOnly: true,
+              onTap: _pickDate,
+              decoration: _inputDecoration('Date', Icons.calendar_today),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    record.addRecord(
+                      double.parse(amountCtrl.text),
+                      _transactionType,
+                      _selectedDate,
+                      categoryCtrl.text,
+                    );
+                    amountCtrl.clear();
+                    categoryCtrl.clear();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: MyColors.appColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                child: const Text(
+                  'Save Transaction',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _typeButton(String type, String label) {
+    bool isSelected = _transactionType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _transactionType = type),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? MyColors.appColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isSelected ? Colors.white : MyColors.appColor,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _summaryCard(String title, double value, Color color) {
-    return Container(
-      width: (Get.width - 60) / 3,
-      height: 60,
-      decoration: BoxDecoration(
-        // color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: MyColors.appColor, size: 20),
+      filled: true,
+      fillColor: Colors.grey[50],
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[200]!),
+      ),
+    );
+  }
+
+  Widget _buildDailyMiniSummary(RecordController record) {
+    return Obx(
+      () => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Text(
-              title,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              value.toStringAsFixed(2),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            _miniSummaryItem('In', record.totalIncome.value, Colors.green),
+            _miniSummaryItem('Out', record.totalExpense.value, Colors.red),
+            _miniSummaryItem('Today', record.balance.value, Colors.blue),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _miniSummaryItem(String label, double value, Color color) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: Colors.black54, fontSize: 12),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value.toStringAsFixed(0),
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecordList(RecordController record) {
+    return Obx(
+      () => ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: record.records.length,
+        itemBuilder: (context, index) {
+          final r = record.records[index];
+          final isIncome = r.type == 'income';
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (isIncome ? Colors.green : Colors.red).withOpacity(
+                    0.1,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isIncome ? Icons.add_rounded : Icons.remove_rounded,
+                  color: isIncome ? Colors.green : Colors.red,
+                ),
+              ),
+              title: Text(
+                r.category,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                DateFormat('hh:mm a').format(r.date),
+                style: const TextStyle(color: Colors.black54, fontSize: 12),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${isIncome ? '+' : '-'} Tk ${r.amount.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isIncome ? Colors.green[700] : Colors.red[700],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 20,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () => record.deleteRecord(r.id),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

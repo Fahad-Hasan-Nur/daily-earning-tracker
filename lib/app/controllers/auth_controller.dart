@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AuthController extends GetxController {
   final _auth = FirebaseAuth.instance;
   Rx<User?> user = Rx<User?>(null);
+  RxBool isLoading = false.obs;
 
   @override
   void onInit() {
@@ -12,11 +13,28 @@ class AuthController extends GetxController {
   }
 
   Future login(String email, String password) async {
-    await _auth.signInWithEmailAndPassword(email: email, password: password);
+    try {
+      isLoading.value = true;
+      await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+    } on FirebaseAuthException catch (e) {
+      Get.snackbar(
+        'Login Error',
+        e.message ?? e.code,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   Future register(String email, String password) async {
     try {
+      isLoading.value = true;
       await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
@@ -24,11 +42,13 @@ class AuthController extends GetxController {
     } on FirebaseAuthException catch (e) {
       Get.snackbar(
         'Register Error',
-        e.code, // <-- THIS IS IMPORTANT
+        e.message ?? e.code,
         snackPosition: SnackPosition.BOTTOM,
       );
     } catch (e) {
       Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      isLoading.value = false;
     }
   }
 

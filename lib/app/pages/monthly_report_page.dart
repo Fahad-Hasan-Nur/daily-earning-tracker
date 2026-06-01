@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../controllers/record_controller.dart';
 import '../utils/colors.dart';
 import 'date_report_page.dart';
+import 'package:intl/intl.dart';
 
 class MonthlyReportPage extends StatefulWidget {
   const MonthlyReportPage({super.key});
@@ -64,319 +65,348 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
     return Scaffold(
       backgroundColor: MyColors.appBg,
       appBar: AppBar(
+        elevation: 0,
         backgroundColor: MyColors.appColor,
-        title: Text('Monthly Daily Report'),
+        title: const Text(
+          'Analytics & Reports',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          onPressed: () => Get.back(),
+        ),
       ),
       body: loading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: MyColors.appColor))
           : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: MyColors.appColor,
-                          ),
-                          onPressed: () async {
-                            final picked = await showDateRangePicker(
-                              context: context,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2100),
-                            );
+                // 1. Hero Summary
+                _buildMonthlyStatsHero(),
 
-                            if (picked != null) {
-                              startDate = picked.start;
-                              endDate = picked.end;
+                // 2. Date Filter
+                _buildDateFilter(),
 
-                              fetchDailyData(from: startDate, to: endDate);
-                            }
-                          },
-                          child: Text(
-                            startDate == null
-                                ? "Select Date Range"
-                                : "${startDate!.day}/${startDate!.month}/${startDate!.year} - "
-                                      "${endDate!.day}/${endDate!.month}/${endDate!.year}",
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 8),
-
-                      // Reset Button
-                      if (startDate != null)
-                        IconButton(
-                          icon: const Icon(Icons.refresh),
-                          onPressed: () {
-                            startDate = null;
-                            endDate = null;
-                            fetchDailyData(); // reload default month
-                          },
-                        ),
-                    ],
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Text(
+                    "Daily Breakdown",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: MyColors.appColor,
+                    ),
                   ),
                 ),
-                SizedBox(height: 10),
+
+                // 3. Daily List
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: dailyData.length,
-                    itemBuilder: (context, index) {
-                      return buildDailyTile(dailyData[index]);
-                    },
-                  ),
+                  child: dailyData.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          itemCount: dailyData.length,
+                          itemBuilder: (context, index) {
+                            return _buildDailyTile(dailyData[index]);
+                          },
+                        ),
                 ),
-                Obx(
-                  () => Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _summaryCard(
-                          'Income',
-                          record.monthlyTotalIncome.value,
-                          Colors.green,
-                        ),
-                        _summaryCard(
-                          'Expense',
-                          record.monthlyTotalExpense.value,
-                          Colors.red,
-                        ),
-                        _summaryCard(
-                          'Balance',
-                          record.monthlyBalance.value,
-                          Colors.blue,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _summaryCard(
-                          'Total Days',
-                          totalDays.toDouble(),
-                          Colors.purple,
-                        ),
-                        _summaryCard('Avg Income', averageIncome, Colors.teal),
-                        _summaryCard(
-                          'Avg Expense',
-                          averageExpense,
-                          Colors.orange,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+
+                // 4. Secondary Stats
+                _buildSecondaryStats(),
               ],
             ),
     );
   }
 
-  Widget buildDailyTile(Map<String, dynamic> day) {
-    final parts = day['date'].split('-');
-    final date = DateTime(
-      int.parse(parts[0]),
-      int.parse(parts[1]),
-      int.parse(parts[2]),
-    );
-
-    final formattedDate = "${parts[2]}/${parts[1]}/${parts[0]}";
-
-    return GestureDetector(
-      onTap: () {
-        Get.to(() => DateReportPage(selectedDate: date));
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              spreadRadius: 2,
-              offset: Offset(0, 4),
+  Widget _buildMonthlyStatsHero() {
+    return Obx(() => Container(
+          width: double.infinity,
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [MyColors.appColor, Color(0xFF674ABB)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            // Date (Left side)
-            Container(
-              width: 65,
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(
-                color: MyColors.appColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: MyColors.appColor.withOpacity(0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
               ),
-              child: Column(
+            ],
+          ),
+          child: Column(
+            children: [
+              Text(
+                startDate == null ? 'Current Month Overview' : 'Custom Range Overview',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tk ${record.monthlyBalance.value.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Text(
-                    formattedDate,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: MyColors.appColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                  _heroStatItem('Total In', record.monthlyTotalIncome.value, Icons.trending_up),
+                  Container(width: 1, height: 40, color: Colors.white24),
+                  _heroStatItem('Total Out', record.monthlyTotalExpense.value, Icons.trending_down),
+                ],
+              ),
+            ],
+          ),
+        ));
+  }
+
+  Widget _heroStatItem(String label, double value, IconData icon) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: Colors.white70),
+            const SizedBox(width: 4),
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Tk ${value.toStringAsFixed(0)}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateFilter() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () async {
+                final picked = await showDateRangePicker(
+                  context: context,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2100),
+                  builder: (context, child) {
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: const ColorScheme.light(
+                          primary: MyColors.appColor,
+                        ),
+                      ),
+                      child: child!,
+                    );
+                  },
+                );
+
+                if (picked != null) {
+                  startDate = picked.start;
+                  endDate = picked.end;
+                  fetchDailyData(from: startDate, to: endDate);
+                }
+              },
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today_rounded, size: 20, color: MyColors.appColor),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Date Range",
+                        style: TextStyle(color: Colors.black54, fontSize: 12),
+                      ),
+                      Text(
+                        startDate == null
+                            ? "Select dates..."
+                            : "${DateFormat('dd/MM').format(startDate!)} - ${DateFormat('dd/MM/yy').format(endDate!)}",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+          ),
+          if (startDate != null)
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded, color: Colors.grey),
+              onPressed: () {
+                setState(() {
+                  startDate = null;
+                  endDate = null;
+                });
+                fetchDailyData();
+              },
+            ),
+        ],
+      ),
+    );
+  }
 
-            const SizedBox(width: 10),
+  Widget _buildDailyTile(Map<String, dynamic> day) {
+    final parts = day['date'].split('-');
+    final date = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+    final dayLabel = DateFormat('dd').format(date);
+    final monthLabel = DateFormat('MMM').format(date);
 
-            // Details (Right side)
+    return InkWell(
+      onTap: () => Get.to(() => DateReportPage(selectedDate: date)),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Row(
+          children: [
+            // Date Circle
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: MyColors.appBg.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    dayLabel,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: MyColors.appColor,
+                    ),
+                  ),
+                  Text(
+                    monthLabel,
+                    style: const TextStyle(fontSize: 10, color: MyColors.appColor),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Values
             Expanded(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Income
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.arrow_downward,
-                            color: Colors.green,
-                            size: 18,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            "${day['income']!.toStringAsFixed(2)}",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  // Expense
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.arrow_upward, color: Colors.red, size: 18),
-                          SizedBox(width: 4),
-                          Text(
-                            "${day['expense']!.toStringAsFixed(2)}",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  // Balance
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.account_balance_wallet,
-                            color: Colors.blue,
-                            size: 18,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            "${day['balance']!.toStringAsFixed(2)}",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  _dailyValueItem('In', day['income']!, Colors.green),
+                  _dailyValueItem('Out', day['expense']!, Colors.red),
+                  _dailyValueItem('Balance', day['balance']!, Colors.blue),
                 ],
               ),
             ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.black12),
           ],
         ),
       ),
     );
   }
 
-  Widget _summaryCard(String title, double value, Color color) {
+  Widget _dailyValueItem(String label, double value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.black38)),
+        Text(
+          value.toStringAsFixed(0),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: color.withOpacity(0.8),
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecondaryStats() {
     return Container(
-      width: (Get.width - 60) / 3,
-      height: 60,
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
-        // color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              value.toStringAsFixed(2),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _miniStat('Days', totalDays.toDouble(), Colors.purple, isInt: true),
+          _miniStat('Avg In', averageIncome, Colors.teal),
+          _miniStat('Avg Out', averageExpense, Colors.orange),
+        ],
       ),
     );
   }
 
-  Widget _summaryCardAvg(
-    String title,
-    double value,
-    Color color, {
-    bool isCount = false,
-  }) {
-    return Container(
-      width: (Get.width - 60) / 3,
-      height: 60,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              isCount ? value.toInt().toString() : value.toStringAsFixed(2),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
+  Widget _miniStat(String label, double value, Color color, {bool isInt = false}) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+        const SizedBox(height: 6),
+        Text(
+          isInt ? value.toInt().toString() : value.toStringAsFixed(0),
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.query_stats_rounded, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          const Text(
+            "No data found for this range",
+            style: TextStyle(color: Colors.black38, fontSize: 16),
+          ),
+        ],
       ),
     );
   }
