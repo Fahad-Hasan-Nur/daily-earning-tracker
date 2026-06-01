@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../controllers/record_controller.dart';
+import '../controllers/auth_controller.dart';
+import '../data/models/record_model.dart';
 import '../utils/colors.dart';
 
 class YearlyReportPage extends StatefulWidget {
@@ -13,6 +16,7 @@ class YearlyReportPage extends StatefulWidget {
 class _YearlyReportPageState extends State<YearlyReportPage> {
   late int selectedYear;
   final record = Get.find<RecordController>();
+  final auth = Get.find<AuthController>();
 
   @override
   void initState() {
@@ -20,7 +24,36 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
     selectedYear = DateTime.now().year;
   }
 
-  Map<int, Map<String, double>> _getMonthlyDataForYear(int year) {
+  Future<List<RecordModel>> _getYearlyRecords(int year) async {
+    try {
+      final uid = auth.user.value?.uid;
+      if (uid == null) return [];
+
+      final startOfYear = DateTime(year, 1, 1);
+      final endOfYear = DateTime(year, 12, 31, 23, 59, 59);
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('records')
+          .where('userId', isEqualTo: uid)
+          .where(
+            'date',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYear),
+          )
+          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfYear))
+          .get();
+
+      return snapshot.docs
+          .map((doc) => RecordModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      print('Error fetching yearly records: $e');
+      return [];
+    }
+  }
+
+  Map<int, Map<String, double>> _getMonthlyDataForYear(
+    List<RecordModel> records,
+  ) {
     final monthlyData = <int, Map<String, double>>{};
 
     // Initialize all months with zero values
@@ -29,20 +62,18 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
     }
 
     // Filter records for the selected year and aggregate by month
-    for (var rec in record.records) {
-      if (rec.date.year == year) {
-        final month = rec.date.month;
-        if (rec.type == 'income') {
-          monthlyData[month]!['income'] =
-              (monthlyData[month]!['income'] ?? 0.0) + rec.amount;
-        } else {
-          monthlyData[month]!['expense'] =
-              (monthlyData[month]!['expense'] ?? 0.0) + rec.amount;
-        }
-        monthlyData[month]!['balance'] =
-            (monthlyData[month]!['income'] ?? 0.0) -
-            (monthlyData[month]!['expense'] ?? 0.0);
+    for (var rec in records) {
+      final month = rec.date.month;
+      if (rec.type == 'income') {
+        monthlyData[month]!['income'] =
+            (monthlyData[month]!['income'] ?? 0.0) + rec.amount;
+      } else {
+        monthlyData[month]!['expense'] =
+            (monthlyData[month]!['expense'] ?? 0.0) + rec.amount;
       }
+      monthlyData[month]!['balance'] =
+          (monthlyData[month]!['income'] ?? 0.0) -
+          (monthlyData[month]!['expense'] ?? 0.0);
     }
 
     return monthlyData;
@@ -67,20 +98,37 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
           onPressed: () => Get.back(),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Year Selector
-            _buildYearSelector(),
+      body: FutureBuilder<List<RecordModel>>(
+        future: _getYearlyRecords(selectedYear),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: MyColors.appColor),
+            );
+          }
 
-            // Yearly Summary Card
-            _buildYearlySummaryCard(),
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
 
-            // Monthly List
-            _buildMonthlyList(),
-          ],
-        ),
+          final yearlyRecords = snapshot.data ?? [];
+
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Year Selector
+                _buildYearSelector(),
+
+                // Yearly Summary Card
+                _buildYearlySummaryCard(yearlyRecords),
+
+                // Monthly List
+                _buildMonthlyList(yearlyRecords),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -128,8 +176,8 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
     );
   }
 
-  Widget _buildYearlySummaryCard() {
-    final monthlyData = _getMonthlyDataForYear(selectedYear);
+  Widget _buildYearlySummaryCard(List<RecordModel> yearlyRecords) {
+    final monthlyData = _getMonthlyDataForYear(yearlyRecords);
     double totalIncome = 0;
     double totalExpense = 0;
 
@@ -211,8 +259,8 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
     );
   }
 
-  Widget _buildMonthlyList() {
-    final monthlyData = _getMonthlyDataForYear(selectedYear);
+  Widget _buildMonthlyList(List<RecordModel> yearlyRecords) {
+    final monthlyData = _getMonthlyDataForYear(yearlyRecords);
     final months = [
       'January',
       'February',
