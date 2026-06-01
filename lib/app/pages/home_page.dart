@@ -160,10 +160,13 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // 3. Today's Summary
+            // 3. Category Summary
+            _buildCategorySummary(record),
+
+            // 4. Today's Summary
             _buildDailyMiniSummary(record),
 
-            // 4. Record List
+            // 5. Record List
             _buildRecordList(record),
           ],
         ),
@@ -442,6 +445,88 @@ class _HomePageState extends State<HomePage> {
         borderSide: BorderSide(color: Colors.grey[200]!),
       ),
     );
+  }
+
+  Widget _buildCategorySummary(RecordController record) {
+    return Obx(() {
+      final categoryTotals = record.getCategoryTotals(record.records);
+      if (categoryTotals.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Text(
+              'Category Breakdown',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: MyColors.appColor,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: categoryTotals.entries.map((entry) {
+                  final categoryId = entry.key;
+                  final total = entry.value;
+                  final category = record.categories.firstWhere(
+                    (cat) => cat.id == categoryId,
+                    orElse: CategoryModel.other,
+                  );
+
+                  return Container(
+                    margin: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          category.name,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: MyColors.appColor,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Tk ${total.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      );
+    });
   }
 
   Widget _buildDailyMiniSummary(RecordController record) {

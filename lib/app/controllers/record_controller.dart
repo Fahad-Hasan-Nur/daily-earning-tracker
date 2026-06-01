@@ -133,6 +133,15 @@ class RecordController extends GetxController {
         .fold(0.0, (sum, item) => sum + item.amount);
   }
 
+  Map<String, double> getCategoryTotals(List<RecordModel> recordsList) {
+    final totals = <String, double>{};
+    for (var record in recordsList) {
+      totals[record.categoryId] =
+          (totals[record.categoryId] ?? 0) + record.amount;
+    }
+    return totals;
+  }
+
   void calculateYearlyTotals() async {
     final now = DateTime.now();
     final startOfYear = DateTime(now.year, 1, 1);
