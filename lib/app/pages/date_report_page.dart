@@ -107,7 +107,10 @@ class _DateReportPageState extends State<DateReportPage> {
             const SizedBox(height: 12),
             TextField(
               controller: categoryCtrl,
-              decoration: _dialogInputDecoration("Detail", Icons.label_outline),
+              decoration: _dialogInputDecoration(
+                "Category Detail",
+                Icons.label_outline,
+              ),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
