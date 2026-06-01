@@ -17,6 +17,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final amountCtrl = TextEditingController();
   final newCategoryCtrl = TextEditingController();
+  final categoryDetailCtrl = TextEditingController();
   final dateCtrl = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
@@ -28,6 +29,15 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     dateCtrl.text = DateFormat('yyyy-MM-dd').format(_selectedDate);
+  }
+
+  @override
+  void dispose() {
+    amountCtrl.dispose();
+    newCategoryCtrl.dispose();
+    categoryDetailCtrl.dispose();
+    dateCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _pickDate() async {
@@ -287,6 +297,13 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 12),
             Obx(() {
               _selectedCategoryId ??= record.categories.first.id;
+              final selectedCat = record.categories.firstWhere(
+                (cat) => cat.id == _selectedCategoryId,
+                orElse: CategoryModel.other,
+              );
+              if (categoryDetailCtrl.text.isEmpty) {
+                categoryDetailCtrl.text = selectedCat.name;
+              }
               return Row(
                 children: [
                   Expanded(
@@ -304,8 +321,14 @@ class _HomePageState extends State<HomePage> {
                             ),
                           )
                           .toList(),
-                      onChanged: (value) =>
-                          setState(() => _selectedCategoryId = value),
+                      onChanged: (value) {
+                        setState(() => _selectedCategoryId = value);
+                        final newSelectedCat = record.categories.firstWhere(
+                          (cat) => cat.id == value,
+                          orElse: CategoryModel.other,
+                        );
+                        categoryDetailCtrl.text = newSelectedCat.name;
+                      },
                       validator: (val) =>
                           val == null || val.isEmpty ? 'Choose category' : null,
                     ),
@@ -324,6 +347,12 @@ class _HomePageState extends State<HomePage> {
             }),
             const SizedBox(height: 12),
             TextFormField(
+              controller: categoryDetailCtrl,
+              decoration: _inputDecoration('Category Detail', Icons.edit_note),
+              validator: (val) => val!.isEmpty ? 'Enter category detail' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
               controller: dateCtrl,
               readOnly: true,
               onTap: _pickDate,
@@ -340,14 +369,18 @@ class _HomePageState extends State<HomePage> {
                       (cat) => cat.id == _selectedCategoryId,
                       orElse: CategoryModel.other,
                     );
+                    final categoryDetail = categoryDetailCtrl.text.trim();
                     record.addRecord(
                       double.parse(amountCtrl.text),
                       _transactionType,
                       _selectedDate,
                       selectedCategory.id,
-                      selectedCategory.name,
+                      categoryDetail.isEmpty
+                          ? selectedCategory.name
+                          : categoryDetail,
                     );
                     amountCtrl.clear();
+                    categoryDetailCtrl.clear();
                   }
                 },
                 style: ElevatedButton.styleFrom(
