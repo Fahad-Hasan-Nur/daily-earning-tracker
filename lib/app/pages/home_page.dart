@@ -1,4 +1,5 @@
 import 'package:daily_income_tracker/app/pages/monthly_report_page.dart';
+import 'package:daily_income_tracker/app/pages/yearly_report_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
@@ -261,58 +262,61 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildYearlyReportCard(RecordController record) {
     return Obx(
-      () => Container(
-        width: double.infinity,
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF4CAF50), Color(0xFF45a049)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.green.withOpacity(0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+      () => GestureDetector(
+        onTap: () => Get.to(const YearlyReportPage()),
+        child: Container(
+          width: double.infinity,
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF4CAF50), Color(0xFF45a049)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            const Text(
-              'Yearly Balance',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tk ${record.yearlyBalance.value.toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withOpacity(0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
               ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _balanceItem(
-                  'Income',
-                  record.yearlyTotalIncome.value,
-                  Icons.arrow_downward,
+            ],
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'Yearly Balance',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tk ${record.yearlyBalance.value.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
                 ),
-                Container(width: 1, height: 40, color: Colors.white24),
-                _balanceItem(
-                  'Expense',
-                  record.yearlyTotalExpense.value,
-                  Icons.arrow_upward,
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _balanceItem(
+                    'Income',
+                    record.yearlyTotalIncome.value,
+                    Icons.arrow_downward,
+                  ),
+                  Container(width: 1, height: 40, color: Colors.white24),
+                  _balanceItem(
+                    'Expense',
+                    record.yearlyTotalExpense.value,
+                    Icons.arrow_upward,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
