@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/record_controller.dart';
 import '../data/models/category_model.dart';
+import '../data/models/record_model.dart';
 import '../utils/colors.dart';
 import 'date_report_page.dart';
 import 'package:intl/intl.dart';
@@ -392,7 +393,19 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
 
   Widget _buildCategorySummary() {
     final record = Get.find<RecordController>();
-    final categoryTotals = record.getCategoryTotals(record.monthlyRecords);
+
+    // Filter records by selected date range
+    List<RecordModel> filteredRecords;
+    if (startDate != null && endDate != null) {
+      filteredRecords = record.monthlyRecords.where((r) {
+        return r.date.isAfter(startDate!) &&
+            r.date.isBefore(endDate!.add(const Duration(days: 1)));
+      }).toList();
+    } else {
+      filteredRecords = record.monthlyRecords;
+    }
+
+    final categoryTotals = record.getCategoryTotals(filteredRecords);
 
     if (categoryTotals.isEmpty) {
       return const SizedBox.shrink();
