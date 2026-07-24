@@ -8,7 +8,9 @@ import 'date_report_page.dart';
 import 'package:intl/intl.dart';
 
 class MonthlyReportPage extends StatefulWidget {
-  const MonthlyReportPage({super.key});
+  final DateTime? initialMonth;
+
+  const MonthlyReportPage({super.key, this.initialMonth});
 
   @override
   State<MonthlyReportPage> createState() => _MonthlyReportPageState();
@@ -24,7 +26,21 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
   @override
   void initState() {
     super.initState();
-    fetchDailyData();
+    final initialMonth = widget.initialMonth;
+    if (initialMonth != null) {
+      startDate = DateTime(initialMonth.year, initialMonth.month, 1);
+      endDate = DateTime(
+        initialMonth.year,
+        initialMonth.month + 1,
+        0,
+        23,
+        59,
+        59,
+      );
+      fetchDailyData(from: startDate, to: endDate);
+    } else {
+      fetchDailyData();
+    }
   }
 
   fetchDailyData({DateTime? from, DateTime? to}) async {
@@ -163,7 +179,9 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
         child: Column(
           children: [
             Text(
-              startDate == null
+              widget.initialMonth != null
+                  ? '${DateFormat('MMMM yyyy').format(startDate!)} Overview'
+                  : startDate == null
                   ? 'Current Month Overview'
                   : 'Custom Range Overview',
               style: const TextStyle(color: Colors.white70, fontSize: 14),
