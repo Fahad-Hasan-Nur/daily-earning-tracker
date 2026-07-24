@@ -193,7 +193,7 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: MyColors.appColor.withOpacity(0.3),
+              color: MyColors.appColor.withValues(alpha: 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -332,7 +332,7 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -345,7 +345,7 @@ class _HomePageState extends State<HomePage> {
             // Type Toggle
             Container(
               decoration: BoxDecoration(
-                color: MyColors.appBg.withOpacity(0.5),
+                color: MyColors.appBg.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -660,8 +660,8 @@ class _HomePageState extends State<HomePage> {
               leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (isIncome ? Colors.green : Colors.red).withOpacity(
-                    0.1,
+                  color: (isIncome ? Colors.green : Colors.red).withValues(
+                    alpha: 0.1,
                   ),
                   shape: BoxShape.circle,
                 ),

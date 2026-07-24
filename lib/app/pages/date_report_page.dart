@@ -115,7 +115,7 @@ class _DateReportPageState extends State<DateReportPage> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: type,
+              initialValue: type,
               decoration: _dialogInputDecoration("Type", Icons.swap_vert),
               items: ['income', 'expense']
                   .map(
@@ -140,7 +140,6 @@ class _DateReportPageState extends State<DateReportPage> {
         await record.updateRecord(
           r.id,
           double.parse(amountCtrl.text),
-          r.categoryId,
           categoryCtrl.text,
         );
         Get.back();
@@ -367,6 +366,62 @@ class _DateReportPageState extends State<DateReportPage> {
         ),
       ),
     );
+    return Obx(
+      () => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [MyColors.appColor, Color(0xFF674ABB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: MyColors.appColor.withValues(alpha: 0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Text(
+              DateFormat('EEEE, dd MMMM').format(_selectedDate),
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tk ${balance.value.toStringAsFixed(2)}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _heroStat(
+                  'Inflow',
+                  totalIncome.value,
+                  Icons.arrow_circle_down_rounded,
+                ),
+                Container(width: 1, height: 30, color: Colors.white24),
+                _heroStat(
+                  'Outflow',
+                  totalExpense.value,
+                  Icons.arrow_circle_up_rounded,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _heroStat(String label, double value, IconData icon) {
@@ -405,6 +460,15 @@ class _DateReportPageState extends State<DateReportPage> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -454,7 +518,9 @@ class _DateReportPageState extends State<DateReportPage> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: (isIncome ? Colors.green : Colors.red).withOpacity(0.1),
+            color: (isIncome ? Colors.green : Colors.red).withValues(
+              alpha: 0.1,
+            ),
             shape: BoxShape.circle,
           ),
           child: Icon(

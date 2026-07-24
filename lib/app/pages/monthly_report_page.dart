@@ -145,7 +145,7 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: MyColors.appColor.withOpacity(0.3),
+              color: MyColors.appColor.withValues(alpha: 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -226,7 +226,7 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -329,7 +329,7 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: MyColors.appBg.withOpacity(0.5),
+                color: MyColors.appBg.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -384,7 +384,7 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
           value.toStringAsFixed(0),
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: color.withOpacity(0.8),
+            color: color.withValues(alpha: 0.8),
             fontSize: 14,
           ),
         ),
@@ -496,7 +496,7 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, -4),
           ),

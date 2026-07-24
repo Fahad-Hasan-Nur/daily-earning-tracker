@@ -38,7 +38,7 @@ class _LoginPageState extends State<LoginPage> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: MyColors.appColor.withOpacity(0.2),
+                        color: MyColors.appColor.withValues(alpha: 0.2),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -63,16 +63,13 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 10),
                 const Text(
                   'Welcome back, track your growth!',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.black54),
                 ),
                 const SizedBox(height: 40),
                 // Form Card
                 Card(
                   elevation: 8,
-                  shadowColor: MyColors.appColor.withOpacity(0.1),
+                  shadowColor: MyColors.appColor.withValues(alpha: 0.1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -91,7 +88,9 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.black12),
+                              borderSide: const BorderSide(
+                                color: Colors.black12,
+                              ),
                             ),
                           ),
                           validator: (value) {
@@ -128,7 +127,9 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.black12),
+                              borderSide: const BorderSide(
+                                color: Colors.black12,
+                              ),
                             ),
                           ),
                           validator: (value) {
