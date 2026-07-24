@@ -180,69 +180,72 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildBalanceCard(RecordController record) {
     return Obx(
-      () => Container(
-        width: double.infinity,
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [MyColors.appColor, Color(0xFF674ABB)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: MyColors.appColor.withValues(alpha: 0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+      () => GestureDetector(
+        onTap: () => Get.to(const MonthlyReportPage()),
+        child: Container(
+          width: double.infinity,
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [MyColors.appColor, Color(0xFF674ABB)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            const Text(
-              'Cash Balance',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tk ${record.monthlyBalance.value.toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: MyColors.appColor.withValues(alpha: 0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Investment Balance: Tk ${record.monthlyTotalInvestment.value.toStringAsFixed(2)}',
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _balanceItem(
-                  'Income',
-                  record.monthlyTotalIncome.value,
-                  Icons.arrow_downward,
+            ],
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'Cash Balance',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tk ${record.monthlyBalance.value.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
                 ),
-                Container(width: 1, height: 40, color: Colors.white24),
-                _balanceItem(
-                  'Expense',
-                  record.monthlyTotalExpense.value,
-                  Icons.arrow_upward,
-                ),
-                Container(width: 1, height: 40, color: Colors.white24),
-                _balanceItem(
-                  'Investment',
-                  record.monthlyTotalInvestment.value,
-                  Icons.savings_rounded,
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Investment Balance: Tk ${record.monthlyTotalInvestment.value.toStringAsFixed(2)}',
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _balanceItem(
+                    'Income',
+                    record.monthlyTotalIncome.value,
+                    Icons.arrow_downward,
+                  ),
+                  Container(width: 1, height: 40, color: Colors.white24),
+                  _balanceItem(
+                    'Expense',
+                    record.monthlyTotalExpense.value,
+                    Icons.arrow_upward,
+                  ),
+                  Container(width: 1, height: 40, color: Colors.white24),
+                  _balanceItem(
+                    'Investment',
+                    record.monthlyTotalInvestment.value,
+                    Icons.savings_rounded,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
