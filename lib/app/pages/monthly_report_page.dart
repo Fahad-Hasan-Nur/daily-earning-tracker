@@ -62,6 +62,15 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
     return total / dailyData.length;
   }
 
+  double get averageInvestment {
+    if (dailyData.isEmpty) return 0.0;
+    double total = dailyData.fold(
+      0.0,
+      (sum, item) => sum + (item['investment'] ?? 0.0),
+    );
+    return total / dailyData.length;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,6 +177,11 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Investment Balance: Tk ${record.monthlyTotalInvestment.value.toStringAsFixed(2)}',
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -182,6 +196,12 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
                   'Total Out',
                   record.monthlyTotalExpense.value,
                   Icons.trending_down,
+                ),
+                Container(width: 1, height: 40, color: Colors.white24),
+                _heroStatItem(
+                  'Invested',
+                  record.monthlyTotalInvestment.value,
+                  Icons.savings_rounded,
                 ),
               ],
             ),
@@ -361,6 +381,7 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
                 children: [
                   _dailyValueItem('In', day['income']!, Colors.green),
                   _dailyValueItem('Out', day['expense']!, Colors.red),
+                  _dailyValueItem('Invest', day['investment']!, Colors.orange),
                   _dailyValueItem('Balance', day['balance']!, Colors.blue),
                 ],
               ),
@@ -508,6 +529,7 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
           _miniStat('Days', totalDays.toDouble(), Colors.purple, isInt: true),
           _miniStat('Avg In', averageIncome, Colors.teal),
           _miniStat('Avg Out', averageExpense, Colors.orange),
+          _miniStat('Avg Invest', averageInvestment, Colors.indigo),
         ],
       ),
     );

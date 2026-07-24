@@ -23,7 +23,7 @@ class _HomePageState extends State<HomePage> {
 
   DateTime _selectedDate = DateTime.now();
   final _formKey = GlobalKey<FormState>();
-  String _transactionType = 'income'; // 'income' or 'expense'
+  String _transactionType = 'income'; // 'income', 'expense', or 'investment'
   String? _selectedCategoryId;
 
   @override
@@ -202,7 +202,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           children: [
             const Text(
-              'Total Balance',
+              'Cash Balance',
               style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
             const SizedBox(height: 8),
@@ -213,6 +213,11 @@ class _HomePageState extends State<HomePage> {
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
               ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Investment Balance: Tk ${record.monthlyTotalInvestment.value.toStringAsFixed(2)}',
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
             const SizedBox(height: 24),
             Row(
@@ -228,6 +233,12 @@ class _HomePageState extends State<HomePage> {
                   'Expense',
                   record.monthlyTotalExpense.value,
                   Icons.arrow_upward,
+                ),
+                Container(width: 1, height: 40, color: Colors.white24),
+                _balanceItem(
+                  'Investment',
+                  record.monthlyTotalInvestment.value,
+                  Icons.savings_rounded,
                 ),
               ],
             ),
@@ -287,7 +298,7 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             children: [
               const Text(
-                'Yearly Balance',
+                'Yearly Cash Balance',
                 style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
               const SizedBox(height: 8),
@@ -298,6 +309,11 @@ class _HomePageState extends State<HomePage> {
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                 ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Investment Balance: Tk ${record.yearlyTotalInvestment.value.toStringAsFixed(2)}',
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               const SizedBox(height: 24),
               Row(
@@ -313,6 +329,12 @@ class _HomePageState extends State<HomePage> {
                     'Expense',
                     record.yearlyTotalExpense.value,
                     Icons.arrow_upward,
+                  ),
+                  Container(width: 1, height: 40, color: Colors.white24),
+                  _balanceItem(
+                    'Investment',
+                    record.yearlyTotalInvestment.value,
+                    Icons.savings_rounded,
                   ),
                 ],
               ),
@@ -352,6 +374,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   _typeButton('income', 'Income'),
                   _typeButton('expense', 'Expense'),
+                  _typeButton('investment', 'Investment'),
                 ],
               ),
             ),
@@ -610,6 +633,11 @@ class _HomePageState extends State<HomePage> {
           children: [
             _miniSummaryItem('In', record.totalIncome.value, Colors.green),
             _miniSummaryItem('Out', record.totalExpense.value, Colors.red),
+            _miniSummaryItem(
+              'Invest',
+              record.totalInvestment.value,
+              Colors.orange,
+            ),
             _miniSummaryItem('Today', record.balance.value, Colors.blue),
           ],
         ),
@@ -637,6 +665,17 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  ({Color color, IconData icon, String sign}) _typeVisuals(String type) {
+    switch (type) {
+      case 'income':
+        return (color: Colors.green, icon: Icons.add_rounded, sign: '+');
+      case 'investment':
+        return (color: Colors.blue, icon: Icons.savings_rounded, sign: '-');
+      default:
+        return (color: Colors.red, icon: Icons.remove_rounded, sign: '-');
+    }
+  }
+
   Widget _buildRecordList(RecordController record) {
     return Obx(
       () => ListView.builder(
@@ -645,7 +684,7 @@ class _HomePageState extends State<HomePage> {
         itemCount: record.records.length,
         itemBuilder: (context, index) {
           final r = record.records[index];
-          final isIncome = r.type == 'income';
+          final visuals = _typeVisuals(r.type);
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
@@ -660,15 +699,10 @@ class _HomePageState extends State<HomePage> {
               leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (isIncome ? Colors.green : Colors.red).withValues(
-                    alpha: 0.1,
-                  ),
+                  color: visuals.color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  isIncome ? Icons.add_rounded : Icons.remove_rounded,
-                  color: isIncome ? Colors.green : Colors.red,
-                ),
+                child: Icon(visuals.icon, color: visuals.color),
               ),
               title: Text(
                 r.category,
@@ -682,11 +716,11 @@ class _HomePageState extends State<HomePage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '${isIncome ? '+' : '-'} Tk ${r.amount.toStringAsFixed(0)}',
+                    '${visuals.sign} Tk ${r.amount.toStringAsFixed(0)}',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: isIncome ? Colors.green[700] : Colors.red[700],
+                      color: visuals.color,
                     ),
                   ),
                   const SizedBox(width: 8),

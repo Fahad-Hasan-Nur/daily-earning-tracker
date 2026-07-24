@@ -24,6 +24,7 @@ class _DateReportPageState extends State<DateReportPage> {
   final RxList<RecordModel> dateRecords = <RecordModel>[].obs;
   final RxDouble totalIncome = 0.0.obs;
   final RxDouble totalExpense = 0.0.obs;
+  final RxDouble totalInvestment = 0.0.obs;
   final RxDouble balance = 0.0.obs;
 
   @override
@@ -81,7 +82,11 @@ class _DateReportPageState extends State<DateReportPage> {
     totalExpense.value = dateRecords
         .where((e) => e.type == 'expense')
         .fold(0.0, (a, b) => a + b.amount);
-    balance.value = totalIncome.value - totalExpense.value;
+    totalInvestment.value = dateRecords
+        .where((e) => e.type == 'investment')
+        .fold(0.0, (a, b) => a + b.amount);
+    balance.value =
+        totalIncome.value - totalExpense.value - totalInvestment.value;
   }
 
   void _showEditDialog(RecordModel r) {
@@ -117,7 +122,7 @@ class _DateReportPageState extends State<DateReportPage> {
             DropdownButtonFormField<String>(
               initialValue: type,
               decoration: _dialogInputDecoration("Type", Icons.swap_vert),
-              items: ['income', 'expense']
+              items: ['income', 'expense', 'investment']
                   .map(
                     (e) => DropdownMenuItem(
                       value: e,
@@ -140,6 +145,7 @@ class _DateReportPageState extends State<DateReportPage> {
         await record.updateRecord(
           r.id,
           double.parse(amountCtrl.text),
+          r.categoryId,
           categoryCtrl.text,
         );
         Get.back();
@@ -324,62 +330,6 @@ class _DateReportPageState extends State<DateReportPage> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: MyColors.appColor.withOpacity(0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Text(
-              DateFormat('EEEE, dd MMMM').format(_selectedDate),
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tk ${balance.value.toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _heroStat(
-                  'Inflow',
-                  totalIncome.value,
-                  Icons.arrow_circle_down_rounded,
-                ),
-                Container(width: 1, height: 30, color: Colors.white24),
-                _heroStat(
-                  'Outflow',
-                  totalExpense.value,
-                  Icons.arrow_circle_up_rounded,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-    return Obx(
-      () => Container(
-        width: double.infinity,
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [MyColors.appColor, Color(0xFF674ABB)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
               color: MyColors.appColor.withValues(alpha: 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
@@ -401,6 +351,11 @@ class _DateReportPageState extends State<DateReportPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Investment Balance: Tk ${totalInvestment.value.toStringAsFixed(2)}',
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -415,6 +370,12 @@ class _DateReportPageState extends State<DateReportPage> {
                   'Outflow',
                   totalExpense.value,
                   Icons.arrow_circle_up_rounded,
+                ),
+                Container(width: 1, height: 30, color: Colors.white24),
+                _heroStat(
+                  'Invested',
+                  totalInvestment.value,
+                  Icons.savings_rounded,
                 ),
               ],
             ),
@@ -459,15 +420,6 @@ class _DateReportPageState extends State<DateReportPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
@@ -505,8 +457,19 @@ class _DateReportPageState extends State<DateReportPage> {
     );
   }
 
+  ({Color color, IconData icon, String sign}) _typeVisuals(String type) {
+    switch (type) {
+      case 'income':
+        return (color: Colors.green, icon: Icons.add_rounded, sign: '+');
+      case 'investment':
+        return (color: Colors.blue, icon: Icons.savings_rounded, sign: '-');
+      default:
+        return (color: Colors.red, icon: Icons.remove_rounded, sign: '-');
+    }
+  }
+
   Widget _buildTransactionTile(RecordModel r) {
-    final isIncome = r.type == 'income';
+    final visuals = _typeVisuals(r.type);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
@@ -518,15 +481,10 @@ class _DateReportPageState extends State<DateReportPage> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: (isIncome ? Colors.green : Colors.red).withValues(
-              alpha: 0.1,
-            ),
+            color: visuals.color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            isIncome ? Icons.add_rounded : Icons.remove_rounded,
-            color: isIncome ? Colors.green : Colors.red,
-          ),
+          child: Icon(visuals.icon, color: visuals.color),
         ),
         title: Text(
           r.category,
@@ -540,11 +498,11 @@ class _DateReportPageState extends State<DateReportPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${isIncome ? '+' : '-'} Tk ${r.amount.toStringAsFixed(0)}',
+              '${visuals.sign} Tk ${r.amount.toStringAsFixed(0)}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: isIncome ? Colors.green[700] : Colors.red[700],
+                color: visuals.color,
               ),
             ),
             const SizedBox(width: 8),

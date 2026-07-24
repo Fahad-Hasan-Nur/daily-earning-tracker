@@ -29,14 +29,17 @@ class RecordController extends GetxController {
   final RxDouble balance = 0.0.obs;
   final RxDouble totalIncome = 0.0.obs;
   final RxDouble totalExpense = 0.0.obs;
+  final RxDouble totalInvestment = 0.0.obs;
 
   final RxDouble monthlyBalance = 0.0.obs;
   final RxDouble monthlyTotalIncome = 0.0.obs;
   final RxDouble monthlyTotalExpense = 0.0.obs;
+  final RxDouble monthlyTotalInvestment = 0.0.obs;
 
   final RxDouble yearlyBalance = 0.0.obs;
   final RxDouble yearlyTotalIncome = 0.0.obs;
   final RxDouble yearlyTotalExpense = 0.0.obs;
+  final RxDouble yearlyTotalInvestment = 0.0.obs;
 
   String get _uid => _auth.currentUser!.uid;
   FirebaseFirestore get db => _db;
@@ -118,13 +121,22 @@ class RecordController extends GetxController {
   void _calculateDailyTotals() {
     totalIncome.value = _calculateTotal(records, 'income');
     totalExpense.value = _calculateTotal(records, 'expense');
-    balance.value = totalIncome.value - totalExpense.value;
+    totalInvestment.value = _calculateTotal(records, 'investment');
+    balance.value =
+        totalIncome.value - totalExpense.value - totalInvestment.value;
   }
 
   void _calculateMonthlyTotals() {
     monthlyTotalIncome.value = _calculateTotal(monthlyRecords, 'income');
     monthlyTotalExpense.value = _calculateTotal(monthlyRecords, 'expense');
-    monthlyBalance.value = monthlyTotalIncome.value - monthlyTotalExpense.value;
+    monthlyTotalInvestment.value = _calculateTotal(
+      monthlyRecords,
+      'investment',
+    );
+    monthlyBalance.value =
+        monthlyTotalIncome.value -
+        monthlyTotalExpense.value -
+        monthlyTotalInvestment.value;
   }
 
   double _calculateTotal(List<RecordModel> list, String type) {
@@ -160,7 +172,11 @@ class RecordController extends GetxController {
 
     yearlyTotalIncome.value = _calculateTotal(yearlyRecords, 'income');
     yearlyTotalExpense.value = _calculateTotal(yearlyRecords, 'expense');
-    yearlyBalance.value = yearlyTotalIncome.value - yearlyTotalExpense.value;
+    yearlyTotalInvestment.value = _calculateTotal(yearlyRecords, 'investment');
+    yearlyBalance.value =
+        yearlyTotalIncome.value -
+        yearlyTotalExpense.value -
+        yearlyTotalInvestment.value;
   }
 
   Future<void> addRecord(
@@ -316,18 +332,23 @@ class RecordController extends GetxController {
 
       dailySummary.putIfAbsent(
         key,
-        () => {'income': 0, 'expense': 0, 'balance': 0},
+        () => {'income': 0, 'expense': 0, 'investment': 0, 'balance': 0},
       );
 
       if (record.type == 'income') {
         dailySummary[key]!['income'] =
             dailySummary[key]!['income']! + record.amount;
-      } else {
+      } else if (record.type == 'expense') {
         dailySummary[key]!['expense'] =
             dailySummary[key]!['expense']! + record.amount;
+      } else {
+        dailySummary[key]!['investment'] =
+            dailySummary[key]!['investment']! + record.amount;
       }
       dailySummary[key]!['balance'] =
-          dailySummary[key]!['income']! - dailySummary[key]!['expense']!;
+          dailySummary[key]!['income']! -
+          dailySummary[key]!['expense']! -
+          dailySummary[key]!['investment']!;
     }
 
     final result = dailySummary.entries.map((e) {
@@ -335,6 +356,7 @@ class RecordController extends GetxController {
         'date': e.key,
         'income': e.value['income'],
         'expense': e.value['expense'],
+        'investment': e.value['investment'],
         'balance': e.value['balance'],
       };
     }).toList();
@@ -344,7 +366,14 @@ class RecordController extends GetxController {
     // Update monthly totals
     monthlyTotalIncome.value = _calculateTotal(fetchedRecords, 'income');
     monthlyTotalExpense.value = _calculateTotal(fetchedRecords, 'expense');
-    monthlyBalance.value = monthlyTotalIncome.value - monthlyTotalExpense.value;
+    monthlyTotalInvestment.value = _calculateTotal(
+      fetchedRecords,
+      'investment',
+    );
+    monthlyBalance.value =
+        monthlyTotalIncome.value -
+        monthlyTotalExpense.value -
+        monthlyTotalInvestment.value;
 
     return result;
   }

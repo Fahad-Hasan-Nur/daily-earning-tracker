@@ -58,7 +58,12 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
 
     // Initialize all months with zero values
     for (int month = 1; month <= 12; month++) {
-      monthlyData[month] = {'income': 0.0, 'expense': 0.0, 'balance': 0.0};
+      monthlyData[month] = {
+        'income': 0.0,
+        'expense': 0.0,
+        'investment': 0.0,
+        'balance': 0.0,
+      };
     }
 
     // Filter records for the selected year and aggregate by month
@@ -67,13 +72,17 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
       if (rec.type == 'income') {
         monthlyData[month]!['income'] =
             (monthlyData[month]!['income'] ?? 0.0) + rec.amount;
-      } else {
+      } else if (rec.type == 'expense') {
         monthlyData[month]!['expense'] =
             (monthlyData[month]!['expense'] ?? 0.0) + rec.amount;
+      } else {
+        monthlyData[month]!['investment'] =
+            (monthlyData[month]!['investment'] ?? 0.0) + rec.amount;
       }
       monthlyData[month]!['balance'] =
           (monthlyData[month]!['income'] ?? 0.0) -
-          (monthlyData[month]!['expense'] ?? 0.0);
+          (monthlyData[month]!['expense'] ?? 0.0) -
+          (monthlyData[month]!['investment'] ?? 0.0);
     }
 
     return monthlyData;
@@ -180,13 +189,15 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
     final monthlyData = _getMonthlyDataForYear(yearlyRecords);
     double totalIncome = 0;
     double totalExpense = 0;
+    double totalInvestment = 0;
 
     for (var month in monthlyData.values) {
       totalIncome += month['income'] ?? 0;
       totalExpense += month['expense'] ?? 0;
+      totalInvestment += month['investment'] ?? 0;
     }
 
-    final balance = totalIncome - totalExpense;
+    final balance = totalIncome - totalExpense - totalInvestment;
 
     return Container(
       width: double.infinity,
@@ -210,7 +221,7 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
       child: Column(
         children: [
           Text(
-            'Year $selectedYear Balance',
+            'Year $selectedYear Cash Balance',
             style: const TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 8),
@@ -222,6 +233,11 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
               fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Investment Balance: Tk ${totalInvestment.toStringAsFixed(2)}',
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -229,6 +245,12 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
               _summaryItem('Income', totalIncome, Icons.arrow_downward),
               Container(width: 1, height: 40, color: Colors.white24),
               _summaryItem('Expense', totalExpense, Icons.arrow_upward),
+              Container(width: 1, height: 40, color: Colors.white24),
+              _summaryItem(
+                'Investment',
+                totalInvestment,
+                Icons.savings_rounded,
+              ),
             ],
           ),
         ],
@@ -299,6 +321,7 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
             final data = monthlyData[month]!;
             final income = data['income'] ?? 0.0;
             final expense = data['expense'] ?? 0.0;
+            final investment = data['investment'] ?? 0.0;
             final balance = data['balance'] ?? 0.0;
 
             return Container(
@@ -342,10 +365,18 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
                               ),
                             ),
                             Text(
-                              'Out: Tk ${expense.toStringAsFixed(0)}',
+                              'Out: Tk ${expense.toStringAsFixed(0)} ',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.red,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'Invest: Tk ${investment.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

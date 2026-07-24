@@ -6,7 +6,7 @@ class RecordModel {
   final double amount;
   final String categoryId;
   final String category;
-  final String type; // 'income' or 'expense'
+  final String type; // 'income', 'expense', or 'investment'
   final DateTime date;
 
   RecordModel({
