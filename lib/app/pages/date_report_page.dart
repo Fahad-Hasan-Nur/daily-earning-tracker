@@ -27,6 +27,12 @@ class _DateReportPageState extends State<DateReportPage> {
   final RxDouble totalInvestment = 0.0.obs;
   final RxDouble balance = 0.0.obs;
 
+  final _entryFormKey = GlobalKey<FormState>();
+  final _amountCtrl = TextEditingController();
+  final _categoryDetailCtrl = TextEditingController();
+  String _transactionType = 'income';
+  String? _selectedCategoryId;
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +44,8 @@ class _DateReportPageState extends State<DateReportPage> {
   @override
   void dispose() {
     _dateCtrl.dispose();
+    _amountCtrl.dispose();
+    _categoryDetailCtrl.dispose();
     super.dispose();
   }
 
@@ -151,6 +159,230 @@ class _DateReportPageState extends State<DateReportPage> {
         Get.back();
         fetchDateRecords();
       },
+    );
+  }
+
+  Future<void> _showAddCategoryDialog() async {
+    final newCategoryCtrl = TextEditingController();
+
+    await Get.dialog(
+      AlertDialog(
+        title: const Text('Create Category'),
+        content: TextField(
+          controller: newCategoryCtrl,
+          decoration: const InputDecoration(labelText: 'Category name'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final newCategory = newCategoryCtrl.text.trim();
+              if (newCategory.isEmpty) {
+                Get.snackbar(
+                  'Invalid',
+                  'Category name cannot be empty',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+                return;
+              }
+              final category = await record.addCategory(newCategory);
+              if (category != null) {
+                setState(() => _selectedCategoryId = category.id);
+              }
+              Get.back();
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddEntryForm() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Form(
+        key: _entryFormKey,
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: MyColors.appBg.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  _entryTypeButton('income', 'Income'),
+                  _entryTypeButton('expense', 'Expense'),
+                  _entryTypeButton('investment', 'Investment'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _amountCtrl,
+              keyboardType: TextInputType.number,
+              decoration: _formInputDecoration('Amount', Icons.attach_money),
+              validator: (val) => val!.isEmpty || double.tryParse(val) == null
+                  ? "Invalid"
+                  : null,
+            ),
+            const SizedBox(height: 12),
+            Obx(() {
+              _selectedCategoryId ??= record.categories.first.id;
+              final selectedCat = record.categories.firstWhere(
+                (cat) => cat.id == _selectedCategoryId,
+                orElse: CategoryModel.other,
+              );
+              if (_categoryDetailCtrl.text.isEmpty) {
+                _categoryDetailCtrl.text = selectedCat.name;
+              }
+              return Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _selectedCategoryId,
+                      decoration: _formInputDecoration(
+                        'Category',
+                        Icons.label_outline,
+                      ),
+                      items: record.categories
+                          .map(
+                            (category) => DropdownMenuItem(
+                              value: category.id,
+                              child: Text(category.name),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedCategoryId = value);
+                        final newSelectedCat = record.categories.firstWhere(
+                          (cat) => cat.id == value,
+                          orElse: CategoryModel.other,
+                        );
+                        _categoryDetailCtrl.text = newSelectedCat.name;
+                      },
+                      validator: (val) =>
+                          val == null || val.isEmpty ? 'Choose category' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _showAddCategoryDialog,
+                    icon: const Icon(
+                      Icons.add_circle_outline,
+                      color: MyColors.appColor,
+                    ),
+                    tooltip: 'Create category',
+                  ),
+                ],
+              );
+            }),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _categoryDetailCtrl,
+              decoration: _formInputDecoration(
+                'Category Detail',
+                Icons.edit_note,
+              ),
+              validator: (val) => val!.isEmpty ? 'Enter category detail' : null,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (_entryFormKey.currentState!.validate()) {
+                    final selectedCategory = record.categories.firstWhere(
+                      (cat) => cat.id == _selectedCategoryId,
+                      orElse: CategoryModel.other,
+                    );
+                    final categoryDetail = _categoryDetailCtrl.text.trim();
+                    record.addRecord(
+                      double.parse(_amountCtrl.text),
+                      _transactionType,
+                      _selectedDate,
+                      selectedCategory.id,
+                      categoryDetail.isEmpty
+                          ? selectedCategory.name
+                          : categoryDetail,
+                    );
+                    _amountCtrl.clear();
+                    _categoryDetailCtrl.clear();
+                    fetchDateRecords();
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: MyColors.appColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Save Transaction',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _entryTypeButton(String type, String label) {
+    bool isSelected = _transactionType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _transactionType = type),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? MyColors.appColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isSelected ? Colors.white : MyColors.appColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _formInputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: MyColors.appColor, size: 20),
+      filled: true,
+      fillColor: Colors.grey[50],
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey[200]!),
+      ),
     );
   }
 
@@ -273,44 +505,61 @@ class _DateReportPageState extends State<DateReportPage> {
           onPressed: () => Get.back(),
         ),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Hero Summary Card
-          _buildDayHeroSummary(),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Hero Summary Card
+            _buildDayHeroSummary(),
 
-          // 2. Date Selector Card
-          _buildDateSelector(),
+            // 2. Date Selector Card
+            _buildDateSelector(),
 
-          // 2.5 Category Breakdown
-          _buildCategorySummary(),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Text(
-              "Transactions",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: MyColors.appColor,
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Text(
+                "Add Transaction",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: MyColors.appColor,
+                ),
               ),
             ),
-          ),
 
-          // 3. Transactions List
-          Expanded(
-            child: Obx(
+            // 2.4 Add Entry Form
+            _buildAddEntryForm(),
+
+            // 2.5 Category Breakdown
+            _buildCategorySummary(),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Text(
+                "Transactions",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: MyColors.appColor,
+                ),
+              ),
+            ),
+
+            // 3. Transactions List
+            Obx(
               () => dateRecords.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
                       padding: const EdgeInsets.only(bottom: 20),
                       itemCount: dateRecords.length,
                       itemBuilder: (_, i) =>
                           _buildTransactionTile(dateRecords[i]),
                     ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
