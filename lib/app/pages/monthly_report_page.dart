@@ -19,6 +19,7 @@ class MonthlyReportPage extends StatefulWidget {
 class _MonthlyReportPageState extends State<MonthlyReportPage> {
   final record = Get.find<RecordController>();
   List<Map<String, dynamic>> dailyData = [];
+  List<RecordModel> rangeRecords = [];
   bool loading = true;
   DateTime? startDate;
   DateTime? endDate;
@@ -48,10 +49,22 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
       loading = true;
     });
 
+    final DateTime rangeStart;
+    final DateTime rangeEnd;
+    if (from != null && to != null) {
+      rangeStart = DateTime(from.year, from.month, from.day);
+      rangeEnd = DateTime(to.year, to.month, to.day, 23, 59, 59);
+    } else {
+      final now = DateTime.now();
+      rangeStart = DateTime(now.year, now.month, 1);
+      rangeEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+    }
+
     dailyData = await record.getDailySummaryForMonth(
       startDate: from,
       endDate: to,
     );
+    rangeRecords = await record.getRecordsByDateRange(rangeStart, rangeEnd);
 
     setState(() {
       loading = false;
@@ -432,20 +445,7 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
   }
 
   Widget _buildCategorySummary() {
-    final record = Get.find<RecordController>();
-
-    // Filter records by selected date range
-    List<RecordModel> filteredRecords;
-    if (startDate != null && endDate != null) {
-      filteredRecords = record.monthlyRecords.where((r) {
-        return r.date.isAfter(startDate!) &&
-            r.date.isBefore(endDate!.add(const Duration(days: 1)));
-      }).toList();
-    } else {
-      filteredRecords = record.monthlyRecords;
-    }
-
-    final categoryTotals = record.getCategoryTotals(filteredRecords);
+    final categoryTotals = record.getCategoryTotals(rangeRecords);
 
     if (categoryTotals.isEmpty) {
       return const SizedBox.shrink();
