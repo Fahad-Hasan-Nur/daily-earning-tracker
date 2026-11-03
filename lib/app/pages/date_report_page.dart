@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/record_controller.dart';
 import '../utils/colors.dart';
+import '../widgets/loan_widgets.dart';
+import 'loans_page.dart';
 import 'package:intl/intl.dart';
 
 class DateReportPage extends StatefulWidget {
@@ -25,11 +27,14 @@ class _DateReportPageState extends State<DateReportPage> {
   final RxDouble totalIncome = 0.0.obs;
   final RxDouble totalExpense = 0.0.obs;
   final RxDouble totalInvestment = 0.0.obs;
+  final RxDouble totalLoanGiven = 0.0.obs;
+  final RxDouble totalLoanRepaid = 0.0.obs;
   final RxDouble balance = 0.0.obs;
 
   final _entryFormKey = GlobalKey<FormState>();
   final _amountCtrl = TextEditingController();
   final _categoryDetailCtrl = TextEditingController();
+  final _borrowerCtrl = TextEditingController();
   String _transactionType = 'income';
   String? _selectedCategoryId;
 
@@ -46,6 +51,7 @@ class _DateReportPageState extends State<DateReportPage> {
     _dateCtrl.dispose();
     _amountCtrl.dispose();
     _categoryDetailCtrl.dispose();
+    _borrowerCtrl.dispose();
     super.dispose();
   }
 
@@ -93,8 +99,13 @@ class _DateReportPageState extends State<DateReportPage> {
     totalInvestment.value = dateRecords
         .where((e) => e.type == 'investment')
         .fold(0.0, (a, b) => a + b.amount);
-    balance.value =
-        totalIncome.value - totalExpense.value - totalInvestment.value;
+    totalLoanGiven.value = dateRecords
+        .where((e) => e.isLoan)
+        .fold(0.0, (a, b) => a + b.amount);
+    totalLoanRepaid.value = dateRecords
+        .where((e) => e.isLoanRepayment)
+        .fold(0.0, (a, b) => a + b.amount);
+    balance.value = RecordModel.cashBalance(dateRecords);
   }
 
   void _showEditDialog(RecordModel r) {
@@ -227,6 +238,7 @@ class _DateReportPageState extends State<DateReportPage> {
                   _entryTypeButton('income', 'Income'),
                   _entryTypeButton('expense', 'Expense'),
                   _entryTypeButton('investment', 'Investment'),
+                  _entryTypeButton(RecordModel.typeLoan, 'Loan'),
                 ],
               ),
             ),
@@ -235,77 +247,105 @@ class _DateReportPageState extends State<DateReportPage> {
               controller: _amountCtrl,
               keyboardType: TextInputType.number,
               decoration: _formInputDecoration('Amount', Icons.attach_money),
-              validator: (val) => val!.isEmpty || double.tryParse(val) == null
-                  ? "Invalid"
-                  : null,
+              validator: (val) {
+                final amount = double.tryParse(val ?? '');
+                if (amount == null) return "Invalid";
+                final isBadLoan =
+                    _transactionType == RecordModel.typeLoan &&
+                    (!amount.isFinite || amount <= 0);
+                return isBadLoan ? "Enter an amount above 0" : null;
+              },
             ),
             const SizedBox(height: 12),
-            Obx(() {
-              _selectedCategoryId ??= record.categories.first.id;
-              final selectedCat = record.categories.firstWhere(
-                (cat) => cat.id == _selectedCategoryId,
-                orElse: CategoryModel.other,
-              );
-              if (_categoryDetailCtrl.text.isEmpty) {
-                _categoryDetailCtrl.text = selectedCat.name;
-              }
-              return Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _selectedCategoryId,
-                      decoration: _formInputDecoration(
-                        'Category',
-                        Icons.label_outline,
+            if (_transactionType == RecordModel.typeLoan)
+              TextFormField(
+                controller: _borrowerCtrl,
+                decoration: _formInputDecoration(
+                  'Given to',
+                  Icons.person_outline,
+                ),
+                validator: (val) =>
+                    val == null || val.trim().isEmpty ? 'Enter a name' : null,
+              )
+            else ...[
+              Obx(() {
+                _selectedCategoryId ??= record.categories.first.id;
+                final selectedCat = record.categories.firstWhere(
+                  (cat) => cat.id == _selectedCategoryId,
+                  orElse: CategoryModel.other,
+                );
+                if (_categoryDetailCtrl.text.isEmpty) {
+                  _categoryDetailCtrl.text = selectedCat.name;
+                }
+                return Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _selectedCategoryId,
+                        decoration: _formInputDecoration(
+                          'Category',
+                          Icons.label_outline,
+                        ),
+                        items: record.categories
+                            .map(
+                              (category) => DropdownMenuItem(
+                                value: category.id,
+                                child: Text(category.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() => _selectedCategoryId = value);
+                          final newSelectedCat = record.categories.firstWhere(
+                            (cat) => cat.id == value,
+                            orElse: CategoryModel.other,
+                          );
+                          _categoryDetailCtrl.text = newSelectedCat.name;
+                        },
+                        validator: (val) => val == null || val.isEmpty
+                            ? 'Choose category'
+                            : null,
                       ),
-                      items: record.categories
-                          .map(
-                            (category) => DropdownMenuItem(
-                              value: category.id,
-                              child: Text(category.name),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() => _selectedCategoryId = value);
-                        final newSelectedCat = record.categories.firstWhere(
-                          (cat) => cat.id == value,
-                          orElse: CategoryModel.other,
-                        );
-                        _categoryDetailCtrl.text = newSelectedCat.name;
-                      },
-                      validator: (val) =>
-                          val == null || val.isEmpty ? 'Choose category' : null,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _showAddCategoryDialog,
-                    icon: const Icon(
-                      Icons.add_circle_outline,
-                      color: MyColors.appColor,
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _showAddCategoryDialog,
+                      icon: const Icon(
+                        Icons.add_circle_outline,
+                        color: MyColors.appColor,
+                      ),
+                      tooltip: 'Create category',
                     ),
-                    tooltip: 'Create category',
-                  ),
-                ],
-              );
-            }),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _categoryDetailCtrl,
-              decoration: _formInputDecoration(
-                'Category Detail',
-                Icons.edit_note,
+                  ],
+                );
+              }),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _categoryDetailCtrl,
+                decoration: _formInputDecoration(
+                  'Category Detail',
+                  Icons.edit_note,
+                ),
+                validator: (val) =>
+                    val!.isEmpty ? 'Enter category detail' : null,
               ),
-              validator: (val) => val!.isEmpty ? 'Enter category detail' : null,
-            ),
+            ],
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (_entryFormKey.currentState!.validate()) {
+                    if (_transactionType == RecordModel.typeLoan) {
+                      final amount = double.parse(_amountCtrl.text);
+                      final borrower = _borrowerCtrl.text.trim();
+                      _amountCtrl.clear();
+                      _borrowerCtrl.clear();
+                      await record.addLoan(amount, borrower, _selectedDate);
+                      fetchDateRecords();
+                      return;
+                    }
                     final selectedCategory = record.categories.firstWhere(
                       (cat) => cat.id == _selectedCategoryId,
                       orElse: CategoryModel.other,
@@ -350,17 +390,21 @@ class _DateReportPageState extends State<DateReportPage> {
       child: GestureDetector(
         onTap: () => setState(() => _transactionType = type),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
           decoration: BoxDecoration(
             color: isSelected ? MyColors.appColor : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isSelected ? Colors.white : MyColors.appColor,
-              fontWeight: FontWeight.bold,
+          // Keeps "Investment" on one line on narrow phones.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected ? Colors.white : MyColors.appColor,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -393,6 +437,7 @@ class _DateReportPageState extends State<DateReportPage> {
 
     final categoryTotals = <String, double>{};
     for (var record in dateRecords) {
+      if (record.isLoanEntry) continue; // Loans have their own summary
       categoryTotals[record.categoryId] =
           (categoryTotals[record.categoryId] ?? 0) + record.amount;
     }
@@ -605,6 +650,10 @@ class _DateReportPageState extends State<DateReportPage> {
               'Investment Balance: Tk ${totalInvestment.value.toStringAsFixed(2)}',
               style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
+            LoanSummaryLine(
+              given: totalLoanGiven.value,
+              repaid: totalLoanRepaid.value,
+            ),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -712,6 +761,18 @@ class _DateReportPageState extends State<DateReportPage> {
         return (color: Colors.green, icon: Icons.add_rounded, sign: '+');
       case 'investment':
         return (color: Colors.blue, icon: Icons.savings_rounded, sign: '-');
+      case RecordModel.typeLoan:
+        return (
+          color: Colors.deepOrange,
+          icon: Icons.call_made_rounded,
+          sign: '-',
+        );
+      case RecordModel.typeLoanRepayment:
+        return (
+          color: Colors.teal,
+          icon: Icons.call_received_rounded,
+          sign: '+',
+        );
       default:
         return (color: Colors.red, icon: Icons.remove_rounded, sign: '-');
     }
@@ -736,7 +797,7 @@ class _DateReportPageState extends State<DateReportPage> {
           child: Icon(visuals.icon, color: visuals.color),
         ),
         title: Text(
-          r.category,
+          r.displayTitle,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
@@ -758,31 +819,27 @@ class _DateReportPageState extends State<DateReportPage> {
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: Colors.grey, size: 20),
               onSelected: (val) {
-                if (val == 'edit') _showEditDialog(r);
+                if (val == 'edit') {
+                  if (r.isLoanEntry) {
+                    Get.to(
+                      () => const LoansPage(),
+                    )?.then((_) => fetchDateRecords());
+                  } else {
+                    _showEditDialog(r);
+                  }
+                }
                 if (val == 'delete') {
-                  Get.defaultDialog(
-                    title: "Delete Record?",
-                    middleText: "This action cannot be undone.",
-                    textConfirm: "Delete",
-                    textCancel: "Cancel",
-                    confirmTextColor: Colors.white,
-                    buttonColor: Colors.red,
-                    onConfirm: () {
-                      record.deleteRecord(r.id);
-                      Get.back();
-                      fetchDateRecords();
-                    },
-                  );
+                  confirmDeleteEntry(r, onDeleted: fetchDateRecords);
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'edit',
                   child: Row(
                     children: [
-                      Icon(Icons.edit_outlined, size: 18),
-                      SizedBox(width: 8),
-                      Text("Edit"),
+                      const Icon(Icons.edit_outlined, size: 18),
+                      const SizedBox(width: 8),
+                      Text(r.isLoanEntry ? "Manage in Loans" : "Edit"),
                     ],
                   ),
                 ),

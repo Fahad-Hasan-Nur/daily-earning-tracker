@@ -4,6 +4,7 @@ import '../controllers/record_controller.dart';
 import '../data/models/category_model.dart';
 import '../data/models/record_model.dart';
 import '../utils/colors.dart';
+import '../widgets/loan_widgets.dart';
 import 'date_report_page.dart';
 import 'package:intl/intl.dart';
 
@@ -213,6 +214,10 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
               'Investment Balance: Tk ${record.monthlyTotalInvestment.value.toStringAsFixed(2)}',
               style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
+            LoanSummaryLine(
+              given: record.monthlyTotalLoanGiven.value,
+              repaid: record.monthlyTotalLoanRepaid.value,
+            ),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -407,13 +412,29 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
             const SizedBox(width: 16),
             // Values
             Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _dailyValueItem('In', day['income']!, Colors.green),
-                  _dailyValueItem('Out', day['expense']!, Colors.red),
-                  _dailyValueItem('Invest', day['investment']!, Colors.orange),
-                  _dailyValueItem('Balance', day['balance']!, Colors.blue),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _dailyValueItem('In', day['income']!, Colors.green),
+                      _dailyValueItem('Out', day['expense']!, Colors.red),
+                      _dailyValueItem(
+                        'Invest',
+                        day['investment']!,
+                        Colors.orange,
+                      ),
+                      _dailyValueItem('Balance', day['balance']!, Colors.blue),
+                    ],
+                  ),
+                  LoanSummaryLine(
+                    given: day['loan']!,
+                    repaid: day['loanRepaid']!,
+                    color: Colors.black54,
+                    fontSize: 11,
+                    textAlign: TextAlign.start,
+                  ),
                 ],
               ),
             ),

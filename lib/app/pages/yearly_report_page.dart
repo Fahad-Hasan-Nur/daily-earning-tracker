@@ -6,6 +6,7 @@ import '../controllers/auth_controller.dart';
 import '../data/models/category_model.dart';
 import '../data/models/record_model.dart';
 import '../utils/colors.dart';
+import '../widgets/loan_widgets.dart';
 import 'monthly_report_page.dart';
 
 class YearlyReportPage extends StatefulWidget {
@@ -64,6 +65,8 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
         'income': 0.0,
         'expense': 0.0,
         'investment': 0.0,
+        'loan': 0.0,
+        'loanRepaid': 0.0,
         'balance': 0.0,
       };
     }
@@ -77,14 +80,18 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
       } else if (rec.type == 'expense') {
         monthlyData[month]!['expense'] =
             (monthlyData[month]!['expense'] ?? 0.0) + rec.amount;
+      } else if (rec.isLoan) {
+        monthlyData[month]!['loan'] =
+            (monthlyData[month]!['loan'] ?? 0.0) + rec.amount;
+      } else if (rec.isLoanRepayment) {
+        monthlyData[month]!['loanRepaid'] =
+            (monthlyData[month]!['loanRepaid'] ?? 0.0) + rec.amount;
       } else {
         monthlyData[month]!['investment'] =
             (monthlyData[month]!['investment'] ?? 0.0) + rec.amount;
       }
       monthlyData[month]!['balance'] =
-          (monthlyData[month]!['income'] ?? 0.0) -
-          (monthlyData[month]!['expense'] ?? 0.0) -
-          (monthlyData[month]!['investment'] ?? 0.0);
+          (monthlyData[month]!['balance'] ?? 0.0) + rec.cashEffect;
     }
 
     return monthlyData;
@@ -195,14 +202,18 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
     double totalIncome = 0;
     double totalExpense = 0;
     double totalInvestment = 0;
+    double totalLoanGiven = 0;
+    double totalLoanRepaid = 0;
 
     for (var month in monthlyData.values) {
       totalIncome += month['income'] ?? 0;
       totalExpense += month['expense'] ?? 0;
       totalInvestment += month['investment'] ?? 0;
+      totalLoanGiven += month['loan'] ?? 0;
+      totalLoanRepaid += month['loanRepaid'] ?? 0;
     }
 
-    final balance = totalIncome - totalExpense - totalInvestment;
+    final balance = RecordModel.cashBalance(yearlyRecords);
 
     return Container(
       width: double.infinity,
@@ -243,6 +254,7 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
             'Investment Balance: Tk ${totalInvestment.toStringAsFixed(2)}',
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
+          LoanSummaryLine(given: totalLoanGiven, repaid: totalLoanRepaid),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -474,6 +486,13 @@ class _YearlyReportPageState extends State<YearlyReportPage> {
                                 ),
                               ),
                             ],
+                          ),
+                          LoanSummaryLine(
+                            given: data['loan'] ?? 0.0,
+                            repaid: data['loanRepaid'] ?? 0.0,
+                            color: Colors.black54,
+                            fontSize: 12,
+                            textAlign: TextAlign.start,
                           ),
                         ],
                       ),

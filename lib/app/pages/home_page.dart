@@ -5,7 +5,10 @@ import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/record_controller.dart';
 import '../data/models/category_model.dart';
+import '../data/models/record_model.dart';
 import '../utils/colors.dart';
+import '../widgets/loan_widgets.dart';
+import 'loans_page.dart';
 import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
@@ -19,11 +22,13 @@ class _HomePageState extends State<HomePage> {
   final amountCtrl = TextEditingController();
   final newCategoryCtrl = TextEditingController();
   final categoryDetailCtrl = TextEditingController();
+  final borrowerCtrl = TextEditingController();
   final dateCtrl = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   final _formKey = GlobalKey<FormState>();
-  String _transactionType = 'income'; // 'income', 'expense', or 'investment'
+  String _transactionType =
+      'income'; // 'income', 'expense', 'investment', 'loan'
   String? _selectedCategoryId;
 
   @override
@@ -37,6 +42,7 @@ class _HomePageState extends State<HomePage> {
     amountCtrl.dispose();
     newCategoryCtrl.dispose();
     categoryDetailCtrl.dispose();
+    borrowerCtrl.dispose();
     dateCtrl.dispose();
     // This page only goes away on sign-out. The controller's data and listeners
     // belong to that user, so whoever signs in next needs a fresh one.
@@ -129,6 +135,9 @@ class _HomePageState extends State<HomePage> {
 
             // 1. Dashboard Summary Card
             _buildBalanceCard(record),
+
+            // Loans Given
+            _buildLoansCard(record),
 
             // 2. Yearly Report Card
             const Padding(
@@ -223,6 +232,10 @@ class _HomePageState extends State<HomePage> {
               Text(
                 'Investment Balance: Tk ${record.monthlyTotalInvestment.value.toStringAsFixed(2)}',
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              LoanSummaryLine(
+                given: record.monthlyTotalLoanGiven.value,
+                repaid: record.monthlyTotalLoanRepaid.value,
               ),
               const SizedBox(height: 24),
               Row(
@@ -321,6 +334,10 @@ class _HomePageState extends State<HomePage> {
                 'Investment Balance: Tk ${record.yearlyTotalInvestment.value.toStringAsFixed(2)}',
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
+              LoanSummaryLine(
+                given: record.yearlyTotalLoanGiven.value,
+                repaid: record.yearlyTotalLoanRepaid.value,
+              ),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -349,6 +366,78 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+  Widget _buildLoansCard(RecordController record) {
+    return Obx(() {
+      final openLoans = record.openLoanCount;
+      return GestureDetector(
+        onTap: () => Get.to(() => const LoansPage()),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: MyColors.appColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.handshake_rounded,
+                  color: MyColors.appColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Loans Given',
+                      style: TextStyle(color: Colors.black54, fontSize: 12),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Tk ${record.totalLoanOutstanding.toStringAsFixed(2)} outstanding',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      switch (openLoans) {
+                        0 => 'No open loans',
+                        1 => '1 open loan',
+                        _ => '$openLoans open loans',
+                      },
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.black26),
+            ],
+          ),
+        ),
+      );
+    });
   }
 
   Widget _buildTransactionForm(RecordController record) {
@@ -381,6 +470,7 @@ class _HomePageState extends State<HomePage> {
                   _typeButton('income', 'Income'),
                   _typeButton('expense', 'Expense'),
                   _typeButton('investment', 'Investment'),
+                  _typeButton(RecordModel.typeLoan, 'Loan'),
                 ],
               ),
             ),
@@ -389,67 +479,86 @@ class _HomePageState extends State<HomePage> {
               controller: amountCtrl,
               keyboardType: TextInputType.number,
               decoration: _inputDecoration('Amount', Icons.attach_money),
-              validator: (val) => val!.isEmpty || double.tryParse(val) == null
-                  ? "Invalid"
-                  : null,
+              validator: (val) {
+                final amount = double.tryParse(val ?? '');
+                if (amount == null) return "Invalid";
+                final isBadLoan =
+                    _transactionType == RecordModel.typeLoan &&
+                    (!amount.isFinite || amount <= 0);
+                return isBadLoan ? "Enter an amount above 0" : null;
+              },
             ),
             const SizedBox(height: 12),
-            Obx(() {
-              _selectedCategoryId ??= record.categories.first.id;
-              final selectedCat = record.categories.firstWhere(
-                (cat) => cat.id == _selectedCategoryId,
-                orElse: CategoryModel.other,
-              );
-              if (categoryDetailCtrl.text.isEmpty) {
-                categoryDetailCtrl.text = selectedCat.name;
-              }
-              return Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedCategoryId,
-                      decoration: _inputDecoration(
-                        'Category',
-                        Icons.label_outline,
+            if (_transactionType == RecordModel.typeLoan)
+              TextFormField(
+                controller: borrowerCtrl,
+                decoration: _inputDecoration('Given to', Icons.person_outline),
+                validator: (val) =>
+                    val == null || val.trim().isEmpty ? 'Enter a name' : null,
+              )
+            else ...[
+              Obx(() {
+                _selectedCategoryId ??= record.categories.first.id;
+                final selectedCat = record.categories.firstWhere(
+                  (cat) => cat.id == _selectedCategoryId,
+                  orElse: CategoryModel.other,
+                );
+                if (categoryDetailCtrl.text.isEmpty) {
+                  categoryDetailCtrl.text = selectedCat.name;
+                }
+                return Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedCategoryId,
+                        decoration: _inputDecoration(
+                          'Category',
+                          Icons.label_outline,
+                        ),
+                        items: record.categories
+                            .map(
+                              (category) => DropdownMenuItem(
+                                value: category.id,
+                                child: Text(category.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() => _selectedCategoryId = value);
+                          final newSelectedCat = record.categories.firstWhere(
+                            (cat) => cat.id == value,
+                            orElse: CategoryModel.other,
+                          );
+                          categoryDetailCtrl.text = newSelectedCat.name;
+                        },
+                        validator: (val) => val == null || val.isEmpty
+                            ? 'Choose category'
+                            : null,
                       ),
-                      items: record.categories
-                          .map(
-                            (category) => DropdownMenuItem(
-                              value: category.id,
-                              child: Text(category.name),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() => _selectedCategoryId = value);
-                        final newSelectedCat = record.categories.firstWhere(
-                          (cat) => cat.id == value,
-                          orElse: CategoryModel.other,
-                        );
-                        categoryDetailCtrl.text = newSelectedCat.name;
-                      },
-                      validator: (val) =>
-                          val == null || val.isEmpty ? 'Choose category' : null,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: () => _showAddCategoryDialog(record),
-                    icon: const Icon(
-                      Icons.add_circle_outline,
-                      color: MyColors.appColor,
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () => _showAddCategoryDialog(record),
+                      icon: const Icon(
+                        Icons.add_circle_outline,
+                        color: MyColors.appColor,
+                      ),
+                      tooltip: 'Create category',
                     ),
-                    tooltip: 'Create category',
-                  ),
-                ],
-              );
-            }),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: categoryDetailCtrl,
-              decoration: _inputDecoration('Category Detail', Icons.edit_note),
-              validator: (val) => val!.isEmpty ? 'Enter category detail' : null,
-            ),
+                  ],
+                );
+              }),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: categoryDetailCtrl,
+                decoration: _inputDecoration(
+                  'Category Detail',
+                  Icons.edit_note,
+                ),
+                validator: (val) =>
+                    val!.isEmpty ? 'Enter category detail' : null,
+              ),
+            ],
             const SizedBox(height: 12),
             TextFormField(
               controller: dateCtrl,
@@ -464,6 +573,16 @@ class _HomePageState extends State<HomePage> {
               child: ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
+                    if (_transactionType == RecordModel.typeLoan) {
+                      record.addLoan(
+                        double.parse(amountCtrl.text),
+                        borrowerCtrl.text.trim(),
+                        _selectedDate,
+                      );
+                      amountCtrl.clear();
+                      borrowerCtrl.clear();
+                      return;
+                    }
                     final selectedCategory = record.categories.firstWhere(
                       (cat) => cat.id == _selectedCategoryId,
                       orElse: CategoryModel.other,
@@ -507,17 +626,21 @@ class _HomePageState extends State<HomePage> {
       child: GestureDetector(
         onTap: () => setState(() => _transactionType = type),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
           decoration: BoxDecoration(
             color: isSelected ? MyColors.appColor : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isSelected ? Colors.white : MyColors.appColor,
-              fontWeight: FontWeight.bold,
+          // Keeps "Investment" on one line on narrow phones.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected ? Colors.white : MyColors.appColor,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -634,17 +757,28 @@ class _HomePageState extends State<HomePage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+        child: Column(
           children: [
-            _miniSummaryItem('In', record.totalIncome.value, Colors.green),
-            _miniSummaryItem('Out', record.totalExpense.value, Colors.red),
-            _miniSummaryItem(
-              'Invest',
-              record.totalInvestment.value,
-              Colors.orange,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _miniSummaryItem('In', record.totalIncome.value, Colors.green),
+                _miniSummaryItem('Out', record.totalExpense.value, Colors.red),
+                _miniSummaryItem(
+                  'Invest',
+                  record.totalInvestment.value,
+                  Colors.orange,
+                ),
+                _miniSummaryItem('Today', record.balance.value, Colors.blue),
+              ],
             ),
-            _miniSummaryItem('Today', record.balance.value, Colors.blue),
+            LoanSummaryLine(
+              given: record.totalLoanGiven.value,
+              repaid: record.totalLoanRepaid.value,
+              color: Colors.black54,
+              fontSize: 12,
+              topPadding: 10,
+            ),
           ],
         ),
       ),
@@ -677,6 +811,18 @@ class _HomePageState extends State<HomePage> {
         return (color: Colors.green, icon: Icons.add_rounded, sign: '+');
       case 'investment':
         return (color: Colors.blue, icon: Icons.savings_rounded, sign: '-');
+      case RecordModel.typeLoan:
+        return (
+          color: Colors.deepOrange,
+          icon: Icons.call_made_rounded,
+          sign: '-',
+        );
+      case RecordModel.typeLoanRepayment:
+        return (
+          color: Colors.teal,
+          icon: Icons.call_received_rounded,
+          sign: '+',
+        );
       default:
         return (color: Colors.red, icon: Icons.remove_rounded, sign: '-');
     }
@@ -711,7 +857,7 @@ class _HomePageState extends State<HomePage> {
                 child: Icon(visuals.icon, color: visuals.color),
               ),
               title: Text(
-                r.category,
+                r.displayTitle,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
@@ -736,7 +882,9 @@ class _HomePageState extends State<HomePage> {
                       size: 20,
                       color: Colors.grey,
                     ),
-                    onPressed: () => record.deleteRecord(r.id),
+                    onPressed: () => r.isLoanEntry
+                        ? confirmDeleteEntry(r)
+                        : record.deleteRecord(r.id),
                   ),
                 ],
               ),

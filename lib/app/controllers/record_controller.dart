@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:daily_income_tracker/app/data/models/category_model.dart';
+import 'package:daily_income_tracker/app/data/models/loan_model.dart';
 import 'package:daily_income_tracker/app/data/models/record_model.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,10 +13,20 @@ class RecordController extends GetxController {
   // Stream subscriptions
   StreamSubscription? _dailySub;
   StreamSubscription? _monthlySub;
+  StreamSubscription? _loanSub;
 
   // Use typed lists
   final RxList<RecordModel> records = <RecordModel>[].obs;
   final RxList<RecordModel> monthlyRecords = <RecordModel>[].obs;
+
+  // Every loan ever given, not limited to a date range
+  final RxList<LoanModel> loans = <LoanModel>[].obs;
+  final RxBool loansLoading = true.obs;
+  final RxnString loansError = RxnString();
+
+  double get totalLoanOutstanding =>
+      loans.fold(0.0, (total, loan) => total + loan.outstanding);
+  int get openLoanCount => loans.where((loan) => !loan.isSettled).length;
 
   // Category list used for dropdown selection
   final RxList<CategoryModel> categories = <CategoryModel>[
@@ -30,16 +41,22 @@ class RecordController extends GetxController {
   final RxDouble totalIncome = 0.0.obs;
   final RxDouble totalExpense = 0.0.obs;
   final RxDouble totalInvestment = 0.0.obs;
+  final RxDouble totalLoanGiven = 0.0.obs;
+  final RxDouble totalLoanRepaid = 0.0.obs;
 
   final RxDouble monthlyBalance = 0.0.obs;
   final RxDouble monthlyTotalIncome = 0.0.obs;
   final RxDouble monthlyTotalExpense = 0.0.obs;
   final RxDouble monthlyTotalInvestment = 0.0.obs;
+  final RxDouble monthlyTotalLoanGiven = 0.0.obs;
+  final RxDouble monthlyTotalLoanRepaid = 0.0.obs;
 
   final RxDouble yearlyBalance = 0.0.obs;
   final RxDouble yearlyTotalIncome = 0.0.obs;
   final RxDouble yearlyTotalExpense = 0.0.obs;
   final RxDouble yearlyTotalInvestment = 0.0.obs;
+  final RxDouble yearlyTotalLoanGiven = 0.0.obs;
+  final RxDouble yearlyTotalLoanRepaid = 0.0.obs;
 
   String get _uid => _auth.currentUser!.uid;
   FirebaseFirestore get db => _db;
@@ -49,6 +66,7 @@ class RecordController extends GetxController {
     loadCategories();
     initiateDailyData();
     initiateMonthlyData();
+    initiateLoanData();
     calculateYearlyTotals();
     super.onInit();
   }
@@ -57,6 +75,7 @@ class RecordController extends GetxController {
   void onClose() {
     _dailySub?.cancel();
     _monthlySub?.cancel();
+    _loanSub?.cancel();
     super.onClose();
   }
 
@@ -118,12 +137,42 @@ class RecordController extends GetxController {
     });
   }
 
+  // Loans and their repayments share a categoryId, so both come from one query.
+  void initiateLoanData() {
+    _loanSub?.cancel();
+    _loanSub = _db
+        .collection('records')
+        .where('userId', isEqualTo: _uid)
+        .where('categoryId', isEqualTo: RecordModel.loanCategoryId)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            loans.value = LoanModel.fromRecords(
+              snapshot.docs.map((doc) => RecordModel.fromFirestore(doc)),
+            );
+            loansError.value = null;
+            loansLoading.value = false;
+          },
+          onError: (Object e) {
+            loansLoading.value = false;
+            // Listeners can be cut off by signing out, which isn't a failure.
+            if (_auth.currentUser != null) {
+              loansError.value = 'Failed to load loans: $e';
+            }
+          },
+        );
+  }
+
   void _calculateDailyTotals() {
     totalIncome.value = _calculateTotal(records, 'income');
     totalExpense.value = _calculateTotal(records, 'expense');
     totalInvestment.value = _calculateTotal(records, 'investment');
-    balance.value =
-        totalIncome.value - totalExpense.value - totalInvestment.value;
+    totalLoanGiven.value = _calculateTotal(records, RecordModel.typeLoan);
+    totalLoanRepaid.value = _calculateTotal(
+      records,
+      RecordModel.typeLoanRepayment,
+    );
+    balance.value = RecordModel.cashBalance(records);
   }
 
   void _calculateMonthlyTotals() {
@@ -133,10 +182,15 @@ class RecordController extends GetxController {
       monthlyRecords,
       'investment',
     );
-    monthlyBalance.value =
-        monthlyTotalIncome.value -
-        monthlyTotalExpense.value -
-        monthlyTotalInvestment.value;
+    monthlyTotalLoanGiven.value = _calculateTotal(
+      monthlyRecords,
+      RecordModel.typeLoan,
+    );
+    monthlyTotalLoanRepaid.value = _calculateTotal(
+      monthlyRecords,
+      RecordModel.typeLoanRepayment,
+    );
+    monthlyBalance.value = RecordModel.cashBalance(monthlyRecords);
   }
 
   double _calculateTotal(List<RecordModel> list, String type) {
@@ -148,6 +202,7 @@ class RecordController extends GetxController {
   Map<String, double> getCategoryTotals(List<RecordModel> recordsList) {
     final totals = <String, double>{};
     for (var record in recordsList) {
+      if (record.isLoanEntry) continue; // Loans have their own summary
       totals[record.categoryId] =
           (totals[record.categoryId] ?? 0) + record.amount;
     }
@@ -173,10 +228,15 @@ class RecordController extends GetxController {
     yearlyTotalIncome.value = _calculateTotal(yearlyRecords, 'income');
     yearlyTotalExpense.value = _calculateTotal(yearlyRecords, 'expense');
     yearlyTotalInvestment.value = _calculateTotal(yearlyRecords, 'investment');
-    yearlyBalance.value =
-        yearlyTotalIncome.value -
-        yearlyTotalExpense.value -
-        yearlyTotalInvestment.value;
+    yearlyTotalLoanGiven.value = _calculateTotal(
+      yearlyRecords,
+      RecordModel.typeLoan,
+    );
+    yearlyTotalLoanRepaid.value = _calculateTotal(
+      yearlyRecords,
+      RecordModel.typeLoanRepayment,
+    );
+    yearlyBalance.value = RecordModel.cashBalance(yearlyRecords);
   }
 
   Future<void> addRecord(
@@ -200,6 +260,70 @@ class RecordController extends GetxController {
       Get.snackbar(
         'Error',
         'Failed to add record: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> addLoan(double amount, String borrower, DateTime date) {
+    return addRecord(
+      amount,
+      RecordModel.typeLoan,
+      date,
+      RecordModel.loanCategoryId,
+      borrower,
+    );
+  }
+
+  Future<void> addLoanRepayment(
+    LoanModel loan,
+    double amount,
+    DateTime date,
+  ) async {
+    try {
+      await _db.collection('records').add({
+        'userId': _uid,
+        'amount': loan.normalizeRepayment(amount),
+        'categoryId': RecordModel.loanCategoryId,
+        'category': loan.borrower,
+        'type': RecordModel.typeLoanRepayment,
+        'loanId': loan.id,
+        'date': Timestamp.fromDate(date),
+      });
+      calculateYearlyTotals();
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to save repayment: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  // Repayments repeat the borrower's name, so a rename has to reach them too.
+  Future<void> updateLoan(
+    LoanModel loan,
+    double amount,
+    String borrower,
+  ) async {
+    try {
+      final recordsRef = _db.collection('records');
+      final batch = _db.batch();
+      batch.update(recordsRef.doc(loan.id), {
+        'amount': amount,
+        'category': borrower,
+      });
+      if (borrower != loan.borrower) {
+        for (final repayment in loan.repayments) {
+          batch.update(recordsRef.doc(repayment.id), {'category': borrower});
+        }
+      }
+      await batch.commit();
+      calculateYearlyTotals();
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to update loan: $e',
         snackPosition: SnackPosition.BOTTOM,
       );
     }
@@ -294,6 +418,59 @@ class RecordController extends GetxController {
     }
   }
 
+  // Repayments are looked up fresh so none can outlive their loan, which would
+  // leave money in the cash balance with nothing to explain it.
+  Future<void> deleteLoan(String loanId) async {
+    try {
+      final recordsRef = _db.collection('records');
+      final repayments = await recordsRef
+          .where('userId', isEqualTo: _uid)
+          .where('loanId', isEqualTo: loanId)
+          .get();
+
+      final batch = _db.batch();
+      batch.delete(recordsRef.doc(loanId));
+      for (final repayment in repayments.docs) {
+        batch.delete(repayment.reference);
+      }
+      await batch.commit();
+      calculateYearlyTotals();
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to delete loan: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> deleteEntry(RecordModel entry) {
+    return entry.isLoan ? deleteLoan(entry.id) : deleteRecord(entry.id);
+  }
+
+  // Explains what deleting this record will do to the loan it belongs to.
+  String deleteWarning(RecordModel entry) {
+    const cannotUndo = 'This action cannot be undone.';
+
+    if (entry.isLoanRepayment) {
+      return '${entry.category} will owe this '
+          'Tk ${entry.amount.toStringAsFixed(2)} again. $cannotUndo';
+    }
+
+    if (entry.isLoan) {
+      final count = loans
+          .where((loan) => loan.id == entry.id)
+          .fold(0, (total, loan) => total + loan.repayments.length);
+      if (count > 0) {
+        final repayments = count == 1 ? '1 repayment' : '$count repayments';
+        return 'This also deletes $repayments from ${entry.category}. '
+            '$cannotUndo';
+      }
+    }
+
+    return cannotUndo;
+  }
+
   Future<List<Map<String, dynamic>>> getDailySummaryForMonth({
     DateTime? startDate,
     DateTime? endDate,
@@ -332,7 +509,14 @@ class RecordController extends GetxController {
 
       dailySummary.putIfAbsent(
         key,
-        () => {'income': 0, 'expense': 0, 'investment': 0, 'balance': 0},
+        () => {
+          'income': 0,
+          'expense': 0,
+          'investment': 0,
+          'loan': 0,
+          'loanRepaid': 0,
+          'balance': 0,
+        },
       );
 
       if (record.type == 'income') {
@@ -341,14 +525,18 @@ class RecordController extends GetxController {
       } else if (record.type == 'expense') {
         dailySummary[key]!['expense'] =
             dailySummary[key]!['expense']! + record.amount;
+      } else if (record.isLoan) {
+        dailySummary[key]!['loan'] =
+            dailySummary[key]!['loan']! + record.amount;
+      } else if (record.isLoanRepayment) {
+        dailySummary[key]!['loanRepaid'] =
+            dailySummary[key]!['loanRepaid']! + record.amount;
       } else {
         dailySummary[key]!['investment'] =
             dailySummary[key]!['investment']! + record.amount;
       }
       dailySummary[key]!['balance'] =
-          dailySummary[key]!['income']! -
-          dailySummary[key]!['expense']! -
-          dailySummary[key]!['investment']!;
+          dailySummary[key]!['balance']! + record.cashEffect;
     }
 
     final result = dailySummary.entries.map((e) {
@@ -357,6 +545,8 @@ class RecordController extends GetxController {
         'income': e.value['income'],
         'expense': e.value['expense'],
         'investment': e.value['investment'],
+        'loan': e.value['loan'],
+        'loanRepaid': e.value['loanRepaid'],
         'balance': e.value['balance'],
       };
     }).toList();
@@ -370,10 +560,15 @@ class RecordController extends GetxController {
       fetchedRecords,
       'investment',
     );
-    monthlyBalance.value =
-        monthlyTotalIncome.value -
-        monthlyTotalExpense.value -
-        monthlyTotalInvestment.value;
+    monthlyTotalLoanGiven.value = _calculateTotal(
+      fetchedRecords,
+      RecordModel.typeLoan,
+    );
+    monthlyTotalLoanRepaid.value = _calculateTotal(
+      fetchedRecords,
+      RecordModel.typeLoanRepayment,
+    );
+    monthlyBalance.value = RecordModel.cashBalance(fetchedRecords);
 
     return result;
   }
