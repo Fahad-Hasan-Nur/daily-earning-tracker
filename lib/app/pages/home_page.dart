@@ -38,6 +38,9 @@ class _HomePageState extends State<HomePage> {
     newCategoryCtrl.dispose();
     categoryDetailCtrl.dispose();
     dateCtrl.dispose();
+    // This page only goes away on sign-out. The controller's data and listeners
+    // belong to that user, so whoever signs in next needs a fresh one.
+    Get.delete<RecordController>();
     super.dispose();
   }
 
