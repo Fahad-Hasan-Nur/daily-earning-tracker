@@ -67,10 +67,15 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
     );
     rangeRecords = await record.getRecordsByDateRange(rangeStart, rangeEnd);
 
+    if (!mounted) return;
     setState(() {
       loading = false;
     });
   }
+
+  double _rangeTotal(String type) => rangeRecords
+      .where((r) => r.type == type)
+      .fold(0.0, (total, r) => total + r.amount);
 
   int get totalDays => dailyData.length;
 
@@ -170,79 +175,77 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
   }
 
   Widget _buildMonthlyStatsHero() {
-    return Obx(
-      () => Container(
-        width: double.infinity,
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [MyColors.appColor, Color(0xFF674ABB)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    // Worked out from this page's own records. The controller's monthly totals
+    // belong to the dashboard and always describe the current month.
+    final investment = _rangeTotal('investment');
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [MyColors.appColor, Color(0xFF674ABB)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: MyColors.appColor.withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: MyColors.appColor.withValues(alpha: 0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            widget.initialMonth != null
+                ? '${DateFormat('MMMM yyyy').format(startDate!)} Overview'
+                : startDate == null
+                ? 'Current Month Overview'
+                : 'Custom Range Overview',
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tk ${RecordModel.cashBalance(rangeRecords).toStringAsFixed(2)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Text(
-              widget.initialMonth != null
-                  ? '${DateFormat('MMMM yyyy').format(startDate!)} Overview'
-                  : startDate == null
-                  ? 'Current Month Overview'
-                  : 'Custom Range Overview',
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tk ${record.monthlyBalance.value.toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Investment Balance: Tk ${investment.toStringAsFixed(2)}',
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          LoanSummaryLine(
+            given: _rangeTotal(RecordModel.typeLoan),
+            repaid: _rangeTotal(RecordModel.typeLoanRepayment),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _heroStatItem(
+                'Total In',
+                _rangeTotal('income'),
+                Icons.trending_up,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Investment Balance: Tk ${record.monthlyTotalInvestment.value.toStringAsFixed(2)}',
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            LoanSummaryLine(
-              given: record.monthlyTotalLoanGiven.value,
-              repaid: record.monthlyTotalLoanRepaid.value,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _heroStatItem(
-                  'Total In',
-                  record.monthlyTotalIncome.value,
-                  Icons.trending_up,
-                ),
-                Container(width: 1, height: 40, color: Colors.white24),
-                _heroStatItem(
-                  'Total Out',
-                  record.monthlyTotalExpense.value,
-                  Icons.trending_down,
-                ),
-                Container(width: 1, height: 40, color: Colors.white24),
-                _heroStatItem(
-                  'Invested',
-                  record.monthlyTotalInvestment.value,
-                  Icons.savings_rounded,
-                ),
-              ],
-            ),
-          ],
-        ),
+              Container(width: 1, height: 40, color: Colors.white24),
+              _heroStatItem(
+                'Total Out',
+                _rangeTotal('expense'),
+                Icons.trending_down,
+              ),
+              Container(width: 1, height: 40, color: Colors.white24),
+              _heroStatItem('Invested', investment, Icons.savings_rounded),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -369,7 +372,11 @@ class _MonthlyReportPageState extends State<MonthlyReportPage> {
     final monthLabel = DateFormat('MMM').format(date);
 
     return InkWell(
-      onTap: () => Get.to(() => DateReportPage(selectedDate: date)),
+      onTap: () async {
+        await Get.to(() => DateReportPage(selectedDate: date));
+        // That day may have changed while it was open.
+        if (mounted) fetchDailyData(from: startDate, to: endDate);
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         padding: const EdgeInsets.all(16),

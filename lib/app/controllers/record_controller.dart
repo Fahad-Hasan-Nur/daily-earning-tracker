@@ -553,23 +553,6 @@ class RecordController extends GetxController {
 
     result.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
 
-    // Update monthly totals
-    monthlyTotalIncome.value = _calculateTotal(fetchedRecords, 'income');
-    monthlyTotalExpense.value = _calculateTotal(fetchedRecords, 'expense');
-    monthlyTotalInvestment.value = _calculateTotal(
-      fetchedRecords,
-      'investment',
-    );
-    monthlyTotalLoanGiven.value = _calculateTotal(
-      fetchedRecords,
-      RecordModel.typeLoan,
-    );
-    monthlyTotalLoanRepaid.value = _calculateTotal(
-      fetchedRecords,
-      RecordModel.typeLoanRepayment,
-    );
-    monthlyBalance.value = RecordModel.cashBalance(fetchedRecords);
-
     return result;
   }
 }
